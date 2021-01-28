@@ -775,9 +775,9 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 	{
 		InstrEndLoop(queryDesc->totaltime);
 		processed++;
-		bool skip = false;
+		bool skip = true;
 		if ( processed % 10 == 0 ) {
-            skip = true;
+            skip = false;
 		}
 
 		if (pgsp_enabled() &&
