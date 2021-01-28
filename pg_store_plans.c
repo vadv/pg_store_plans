@@ -220,6 +220,8 @@ static bool log_triggers;		/* whether to log trigger statistics  */
 static int  plan_format;	/* Plan representation style in
 								 * pg_store_plans.plan  */
 
+static int processed = 0;
+
 #define pgsp_enabled() \
 	(track_level == TRACK_LEVEL_ALL || \
 	(track_level == TRACK_LEVEL_TOP && nested_level == 0))
@@ -772,10 +774,16 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 	if (queryDesc->totaltime)
 	{
 		InstrEndLoop(queryDesc->totaltime);
+		processed++;
+		bool skip = false;
+		if ( processed % 10 == 0 ) {
+            skip = true;
+		}
 
 		if (pgsp_enabled() &&
 			queryDesc->totaltime->total >= 
-			(double)min_duration / 1000.0)
+			(double)min_duration / 1000.0 &&
+			!skip)
 		{
 			ExplainState *es     = NewExplainState();
 			StringInfo	  es_str = es->str;
