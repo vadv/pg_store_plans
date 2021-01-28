@@ -806,7 +806,7 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 			 */
 
 			store_entry(es_str->data,
-						hash_query(queryDesc->sourceText),
+						0,
 						queryDesc->plannedstmt->queryId,
 						queryDesc->totaltime->total * 1000.0,	/* convert to msec */
 						queryDesc->estate->es_processed,
