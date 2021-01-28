@@ -228,8 +228,8 @@ static int processed = 0;
 
 #define pgsp_enabled() \
 	(track_level == TRACK_LEVEL_ALL || \
-	(track_level == TRACK_LEVEL_TOP && nested_level == 0) && \
-    current_query_sampled)
+	(track_level == TRACK_LEVEL_TOP && nested_level == 0)) && \
+    current_query_sampled
 
 /*---- Function declarations ----*/
 
@@ -716,14 +716,13 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			(log_timing ? 0: INSTRUMENT_ROWS)|
 			(log_buffers ? INSTRUMENT_BUFFERS : 0);
 	}
-	if (nesting_level == 0)
-	{
-		if (min_duration >= 0 && !IsParallelWorker())
-			current_query_sampled = (random() < sample_rate *
-									 ((double) MAX_RANDOM_VALUE + 1));
-		else
-			current_query_sampled = false;
-	}
+
+    if (min_duration >= 0 && !IsParallelWorker())
+        current_query_sampled = (random() < sample_rate *
+            ((double) MAX_RANDOM_VALUE + 1));
+    else
+        current_query_sampled = false;
+
 	if (prev_ExecutorStart)
 		prev_ExecutorStart(queryDesc, eflags);
 	else
