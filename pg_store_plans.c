@@ -211,6 +211,7 @@ static const struct config_enum_entry plan_formats[] =
 static int	store_size;			/* max # statements to track */
 static int	track_level;		/* tracking level */
 static int	min_duration;		/* min duration to record */
+static int	slow_statement_duration;	/* slow log to record */
 static bool dump_on_shutdown;	/* whether to save stats across shutdown */
 static bool log_analyze;		/* Similar to EXPLAIN (ANALYZE *) */
 static bool log_verbose;		/* Similar to EXPLAIN (VERBOSE *) */
@@ -345,6 +346,19 @@ _PG_init(void)
 					"Minimum duration to record plan in milliseconds.",
 							NULL,
 							&min_duration,
+							0,
+							0,
+							INT_MAX,
+							PGC_SUSET,
+							0,
+							NULL,
+							NULL,
+							NULL);
+
+	DefineCustomIntVariable("pg_store_plans.slow_statement_duration",
+					"Unconditional record plan of slow statement, in milliseconds.",
+							NULL,
+							&slow_statement_duration,
 							0,
 							0,
 							INT_MAX,
@@ -797,9 +811,10 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 		InstrEndLoop(queryDesc->totaltime);
 		processed++;
 
-		if (pgsp_enabled() &&
-			queryDesc->totaltime->total >= 
-			(double)min_duration / 1000.0)
+		if ((pgsp_enabled() &&
+			queryDesc->totaltime->total >= (double)min_duration / 1000.0) ||
+            (slow_statement_duration > 0 && nested_level == 0 &&
+                queryDesc->totaltime->total >= (double)slow_statement_duration / 1000.0))
 		{
 			ExplainState *es     = NewExplainState();
 			StringInfo	  es_str = es->str;
