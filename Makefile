@@ -15,7 +15,9 @@ DATA = pg_store_plans--1.5.sql
 REGRESS = convert store
 REGRESS_OPTS = --temp-config=regress.conf
 ifdef USE_PGXS
+ifndef PG_CONFIG
 PG_CONFIG = pg_config
+endif
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 else
