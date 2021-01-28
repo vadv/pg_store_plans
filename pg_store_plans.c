@@ -717,11 +717,7 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			(log_buffers ? INSTRUMENT_BUFFERS : 0);
 	}
 
-    if (min_duration >= 0 && !IsParallelWorker())
-        current_query_sampled = (random() < sample_rate *
-            ((double) MAX_RANDOM_VALUE + 1));
-    else
-        current_query_sampled = false;
+    current_query_sampled = (random() < sample_rate *((double) MAX_RANDOM_VALUE + 1));
 
 	if (prev_ExecutorStart)
 		prev_ExecutorStart(queryDesc, eflags);
