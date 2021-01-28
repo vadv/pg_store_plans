@@ -2,3 +2,5 @@
 *.so
 *.o
 CMakeLists.txt
+regression.*
+results
