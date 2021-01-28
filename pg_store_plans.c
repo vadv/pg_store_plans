@@ -343,27 +343,27 @@ _PG_init(void)
 							 NULL);
 
 	DefineCustomIntVariable("pg_store_plans.min_duration",
-					"Minimum duration to record plan in milliseconds.",
+					"Minimum duration to record plan.",
 							NULL,
 							&min_duration,
 							0,
 							0,
 							INT_MAX,
 							PGC_SUSET,
-							0,
+							GUC_UNIT_MS,
 							NULL,
 							NULL,
 							NULL);
 
 	DefineCustomIntVariable("pg_store_plans.slow_statement_duration",
-					"Unconditional record plan of slow statement, in milliseconds.",
+					"Unconditional record plan of slow statement.",
 							NULL,
 							&slow_statement_duration,
 							0,
 							0,
 							INT_MAX,
 							PGC_SUSET,
-							0,
+							GUC_UNIT_MS,
 							NULL,
 							NULL,
 							NULL);
