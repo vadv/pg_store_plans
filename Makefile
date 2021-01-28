@@ -35,7 +35,6 @@ TARSOURCES = Makefile *.c  *.h \
 	pg_store_plans.control \
 	docs/* expected/*.out sql/*.sql \
 
-LDFLAGS+=-Wl
 
 ## These entries need running server
 DBNAME = postgres
