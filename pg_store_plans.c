@@ -420,7 +420,7 @@ _PG_init(void)
 							 NULL,
 							 NULL);
 
-	DefineCustomBoolVariable("pg_store_plans.sample_rate",
+	DefineCustomRealVariable("pg_store_plans.sample_rate",
                           "Fraction of queries to process.",
 							 NULL,
 							 &sample_rate,
