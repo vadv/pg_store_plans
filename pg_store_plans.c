@@ -217,14 +217,19 @@ static bool log_verbose;		/* Similar to EXPLAIN (VERBOSE *) */
 static bool log_buffers;		/* Similar to EXPLAIN (BUFFERS *) */
 static bool log_timing;			/* Similar to EXPLAIN (TIMING *) */
 static bool log_triggers;		/* whether to log trigger statistics  */
+static double sample_rate = 1;  /* sample rate */
 static int  plan_format;	/* Plan representation style in
 								 * pg_store_plans.plan  */
+
+/* Is the current top-level query to be sampled? */
+static bool current_query_sampled = false;
 
 static int processed = 0;
 
 #define pgsp_enabled() \
 	(track_level == TRACK_LEVEL_ALL || \
-	(track_level == TRACK_LEVEL_TOP && nested_level == 0))
+	(track_level == TRACK_LEVEL_TOP && nested_level == 0) && \
+    current_query_sampled)
 
 /*---- Function declarations ----*/
 
@@ -409,6 +414,19 @@ _PG_init(void)
 							 NULL,
 							 &log_verbose,
 							 false,
+							 PGC_SUSET,
+							 0,
+							 NULL,
+							 NULL,
+							 NULL);
+
+	DefineCustomBoolVariable("pg_store_plans.sample_rate",
+                          "Fraction of queries to process.",
+							 NULL,
+							 &sample_rate,
+							 1.0,
+							 0.0,
+							 1.0,
 							 PGC_SUSET,
 							 0,
 							 NULL,
@@ -698,6 +716,14 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			(log_timing ? 0: INSTRUMENT_ROWS)|
 			(log_buffers ? INSTRUMENT_BUFFERS : 0);
 	}
+	if (nesting_level == 0)
+	{
+		if (min_duration >= 0 && !IsParallelWorker())
+			current_query_sampled = (random() < sample_rate *
+									 ((double) MAX_RANDOM_VALUE + 1));
+		else
+			current_query_sampled = false;
+	}
 	if (prev_ExecutorStart)
 		prev_ExecutorStart(queryDesc, eflags);
 	else
@@ -775,15 +801,10 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 	{
 		InstrEndLoop(queryDesc->totaltime);
 		processed++;
-		bool skip = true;
-		if ( processed % 10 == 0 ) {
-            skip = false;
-		}
 
 		if (pgsp_enabled() &&
 			queryDesc->totaltime->total >= 
-			(double)min_duration / 1000.0 &&
-			!skip)
+			(double)min_duration / 1000.0)
 		{
 			ExplainState *es     = NewExplainState();
 			StringInfo	  es_str = es->str;
