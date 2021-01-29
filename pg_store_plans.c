@@ -24,6 +24,7 @@
  *
  * Copyright (c) 2008-2020, PostgreSQL Global Development Group
  * Copyright (c) 2012-2020, NIPPON TELEGRAPH AND TELEPHONE CORPORATION
+ * Copyright (c) 2021, Dmitriy Vasiliev
  *
  * IDENTIFICATION
  *	  pg_store_plans/pg_store_plans.c
@@ -218,6 +219,7 @@ static bool log_verbose;		/* Similar to EXPLAIN (VERBOSE *) */
 static bool log_buffers;		/* Similar to EXPLAIN (BUFFERS *) */
 static bool log_timing;			/* Similar to EXPLAIN (TIMING *) */
 static bool log_triggers;		/* whether to log trigger statistics  */
+static bool store_last_plan;    /* always update plan */
 static double sample_rate = 1;  /* sample rate */
 static int  plan_format;	/* Plan representation style in
 								 * pg_store_plans.plan  */
@@ -371,6 +373,17 @@ _PG_init(void)
 							 NULL,
 							 &dump_on_shutdown,
 							 true,
+							 PGC_SIGHUP,
+							 0,
+							 NULL,
+							 NULL,
+							 NULL);
+
+	DefineCustomBoolVariable("pg_store_plans.store_last_plan",
+			   "Always update text of stored plan.",
+							 NULL,
+							 &store_last_plan,
+							 false,
 							 PGC_SIGHUP,
 							 0,
 							 NULL,
@@ -920,8 +933,8 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 	int 		plan_len;
 	char	   *normalized_plan = NULL;
 	char	   *shorten_plan = NULL;
-	volatile StatEntry *e;
-	bool update_text_plan = false;
+	volatile   StatEntry *e;
+	bool       update_plan = false;
 
 	Assert(plan != NULL);
 
@@ -939,6 +952,16 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 						  strlen(normalized_plan));
 	pfree(normalized_plan);
 
+	if (store_last_plan) {
+	    update_plan = true;
+	    shorten_plan = pgsp_json_shorten(plan);
+	    plan_len = strlen(shorten_plan);
+	    if (plan_len >= shared_state->plan_size)
+		    plan_len = pg_encoding_mbcliplen(GetDatabaseEncoding(),
+										 shorten_plan,
+										 plan_len,
+										 shared_state->plan_size - 1);
+	}
 
 	/* Look up the hash table entry with shared lock. */
 	LWLockAcquire(shared_state->lock, LW_SHARED);
@@ -948,14 +971,15 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 	/* Create new entry, if not present */
 	if (!entry)
 	{
-	    update_text_plan = true;
-	    shorten_plan = pgsp_json_shorten(plan);
-	    plan_len = strlen(shorten_plan);
-	    if (plan_len >= shared_state->plan_size)
-		    plan_len = pg_encoding_mbcliplen(GetDatabaseEncoding(),
-										 shorten_plan,
-										 plan_len,
-										 shared_state->plan_size - 1);
+	    if (!update_plan) {
+            shorten_plan = pgsp_json_shorten(plan);
+            plan_len = strlen(shorten_plan);
+            if (plan_len >= shared_state->plan_size)
+                plan_len = pg_encoding_mbcliplen(GetDatabaseEncoding(),
+                                                 shorten_plan,
+                                                 plan_len,
+                                                 shared_state->plan_size - 1);
+        }
 		/*
 		 * We'll need exclusive lock to make a new entry.  There is no point
 		 * in holding shared lock while we normalize the string, though.
@@ -1031,7 +1055,7 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 	e->counters.last_call = GetCurrentTimestamp();
 	e->counters.usage += USAGE_EXEC(total_time);
 
-	if (update_text_plan)
+	if (update_plan)
     {
         Assert(plan_len >= 0 && plan_len < shared_state->plan_size);
         memcpy(entry->plan, shorten_plan, plan_len);

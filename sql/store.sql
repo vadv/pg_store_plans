@@ -60,3 +60,10 @@ SELECT test_explain();
 DROP FUNCTION test_explain();
 DROP TABLE t1;
 
+SELECT pg_stat_statements_reset();
+SELECT pg_store_plans_reset();
+SELECT 'sleep' as regress, pg_sleep(0.1);
+SELECT s.calls FROM pg_stat_statements s JOIN pg_store_plans p ON (s.queryid = p.queryid_stat_statements) WHERE s.query = 'SELECT $1 as regress, pg_sleep($2)';
+SET pg_store_plans.min_duration TO '1s';
+SELECT 'sleep' as regress, pg_sleep(0.1);
+SELECT s.calls FROM pg_stat_statements s JOIN pg_store_plans p ON (s.queryid = p.queryid_stat_statements) WHERE s.query = 'SELECT $1 as regress, pg_sleep($2)';
