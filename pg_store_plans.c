@@ -225,8 +225,6 @@ static int  plan_format;	/* Plan representation style in
 /* Is the current top-level query to be sampled? */
 static bool current_query_sampled = false;
 
-static int processed = 0;
-
 #define pgsp_enabled() \
 	(track_level == TRACK_LEVEL_ALL || \
 	(track_level == TRACK_LEVEL_TOP && nested_level == 0)) && \
@@ -809,7 +807,6 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 	if (queryDesc->totaltime)
 	{
 		InstrEndLoop(queryDesc->totaltime);
-		processed++;
 
 		if ((pgsp_enabled() &&
 			queryDesc->totaltime->total >= (double)min_duration / 1000.0) ||
