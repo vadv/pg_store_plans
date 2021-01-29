@@ -10,4 +10,4 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Tests
-      run: ./tests/regression.sh
+      run: sudo ./tests/regression.sh
