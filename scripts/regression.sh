@@ -21,5 +21,3 @@ make clean && make && make install
 psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
 /etc/init.d/postgresql restart
 make installcheck
-
-#apt install -y postgresql-server-dev-10 postgresql-server-dev-11 postgresql-server-dev-12
