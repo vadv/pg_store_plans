@@ -1,10 +1,10 @@
-Представляет из себя fork с изменениями:
+It is a fork with changes:
 
-* добавлен GUC store_last_plan, который по умолчанию false,
-  если не сохраняется последний план, а первый, то получаем +30% прироста.
-* не сохраняется queryID в собственном формате, дает до +10% прироста.
-* добавлен sample_rate (на основе random).
-* добавлено slow_statement_duration - это безусловное логирование планов запросов длиннее
-  указанного значения.
-* min_duration - теперь можно указывать как время.
-* фиксы сборки.
+* added GUC store_last_plan (false by default)
+  last plan is not saved, only first one, gets +30% increase.
+* does not save queryID in its own format, gives up to +10% increase.
+* added sample_rate (based on random).
+* added slow_statement_duration - this is an unconditional logging of query plans longer than 
+  the specified value.
+* min_duration - now be specified as time.
+* make fixes.
