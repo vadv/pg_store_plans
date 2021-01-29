@@ -823,7 +823,7 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 
 		if ((pgsp_enabled() &&
 			queryDesc->totaltime->total >= (double)min_duration / 1000.0) ||
-            (slow_statement_duration > 0 && nested_level == 0 &&
+            (slow_statement_duration > 0 && nested_level == 0 && queryDesc->totaltime &&
                 queryDesc->totaltime->total >= (double)slow_statement_duration / 1000.0))
 		{
 			ExplainState *es     = NewExplainState();
@@ -972,6 +972,7 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 	if (!entry)
 	{
 	    if (!update_plan) {
+	        update_plan = true;
             shorten_plan = pgsp_json_shorten(plan);
             plan_len = strlen(shorten_plan);
             if (plan_len >= shared_state->plan_size)
@@ -1010,8 +1011,9 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 		e->counters.usage = USAGE_INIT;
 		e->counters.first_call = GetCurrentTimestamp();
 	}
-	
+
 	e->counters.calls += 1;
+
 	e->counters.total_time += total_time;
 	if (e->counters.calls == 1)
 	{
