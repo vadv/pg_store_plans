@@ -97,7 +97,7 @@ typedef struct EntryKey
 typedef struct Counters
 {
 	int64		calls;			/* # of times executed */
-	int64       slow_log_calls; /* count of slow logs */
+	int64		slow_log_calls; /* count of slow logs */
 	double		total_time;		/* total execution time, in msec */
 	double		min_time;		/* minimum execution time in msec */
 	double		max_time;		/* maximum execution time in msec */
