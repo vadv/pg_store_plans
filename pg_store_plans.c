@@ -114,10 +114,10 @@ typedef struct Counters
 	int64		local_blks_written; /* # of local disk blocks written */
 	int64		temp_blks_read; /* # of temp blocks read */
 	int64		temp_blks_written;	/* # of temp blocks written */
-	double      total_plan_duration_time; /* total time spent planning, in msec */
-	double      min_plan_duration_time; /* max time spent planning, in msec */
-	double      max_plan_duration_time; /* min time spent planning, in msec */
-	double      mean_plan_duration_time; /* mean time spent planning, in msec */
+	double		total_plan_duration_time; /* total time spent planning, in msec */
+	double		min_plan_duration_time; /* max time spent planning, in msec */
+	double		max_plan_duration_time; /* min time spent planning, in msec */
+	double		mean_plan_duration_time; /* mean time spent planning, in msec */
 	double		blk_read_time;	/* time spent reading, in msec */
 	double		blk_write_time; /* time spent writing, in msec */
 	TimestampTz first_call;		/* timestamp of first call  */
