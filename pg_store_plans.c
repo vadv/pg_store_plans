@@ -280,7 +280,9 @@ PG_FUNCTION_INFO_V1(pg_store_plans_xmlplan);
 static void pgsp_shmem_startup(void);
 static void pgsp_shmem_shutdown(int code, Datum arg);
 static PlannedStmt *pgsp_planner(Query *parse,
+#if PG_VERSION_NUM >= 130000
 								 const char *query_string,
+#endif
 								 int cursorOptions,
 								 ParamListInfo boundParams);
 static void pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags);
@@ -763,7 +765,9 @@ error:
  */
 static PlannedStmt *
 pgsp_planner(Query *parse,
+#if PG_VERSION_NUM >= 130000
 			 const char *query_string,
+#endif
 			 int cursorOptions,
 			 ParamListInfo boundParams) {
 	PlannedStmt *result;
@@ -778,11 +782,17 @@ pgsp_planner(Query *parse,
 		PG_TRY();
 		{
 			if (prev_planner_hook)
-				result = prev_planner_hook(parse, query_string, cursorOptions,
-										   boundParams);
+				result = prev_planner_hook(parse,
+#if PG_VERSION_NUM >= 130000
+							   query_string,
+#endif
+							   cursorOptions, boundParams);
 			else
-				result = standard_planner(parse, query_string, cursorOptions,
-										  boundParams);
+				result = standard_planner(parse,
+#if PG_VERSION_NUM >= 130000
+							  query_string,
+#endif
+							  cursorOptions, boundParams);
 		}
 		PG_FINALLY();
 		{
@@ -798,11 +808,17 @@ pgsp_planner(Query *parse,
 	else
 	{
 		if (prev_planner_hook)
-			result = prev_planner_hook(parse, query_string, cursorOptions,
-									   boundParams);
+			result = prev_planner_hook(parse,
+#if PG_VERSION_NUM >= 130000
+							  query_string,
+#endif
+							  cursorOptions, boundParams);
 		else
-			result = standard_planner(parse, query_string, cursorOptions,
-									  boundParams);
+			result = standard_planner(parse,
+#if PG_VERSION_NUM >= 130000
+							  query_string,
+#endif
+							 cursorOptions, boundParams);
 	}
 
 	return result;
