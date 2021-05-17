@@ -16,10 +16,6 @@ CREATE FUNCTION pg_store_plans(IN showtext boolean,
     OUT min_time float8,
     OUT max_time float8,
     OUT mean_time float8,
-    OUT total_plan_time float8,
-    OUT min_plan_time float8,
-    OUT max_plan_time float8,
-    OUT mean_plan_time float8,
     OUT stddev_time float8,
     OUT rows int8,
     OUT shared_blks_hit int8,
@@ -35,7 +31,11 @@ CREATE FUNCTION pg_store_plans(IN showtext boolean,
     OUT blk_read_time float8,
     OUT blk_write_time float8,
     OUT first_call timestamptz,
-    OUT last_call timestamptz
+    OUT last_call timestamptz,
+    OUT total_plan_time float8,
+    OUT min_plan_time float8,
+    OUT max_plan_time float8,
+    OUT mean_plan_time float8
 )
 RETURNS SETOF record
 AS 'MODULE_PATHNAME'
