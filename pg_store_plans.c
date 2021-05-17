@@ -1349,10 +1349,6 @@ pg_store_plans(PG_FUNCTION_ARGS)
 		values[i++] = Float8GetDatumFast(tmp.min_time);
 		values[i++] = Float8GetDatumFast(tmp.max_time);
 		values[i++] = Float8GetDatumFast(tmp.mean_time);
-		values[i++] = Float8GetDatumFast(tmp.total_plan_duration_time);
-		values[i++] = Float8GetDatumFast(tmp.min_plan_duration_time);
-		values[i++] = Float8GetDatumFast(tmp.max_plan_duration_time);
-		values[i++] = Float8GetDatumFast(tmp.mean_plan_duration_time);
 
 		/*
 		 * Note we are calculating the population variance here, not the
@@ -1381,6 +1377,10 @@ pg_store_plans(PG_FUNCTION_ARGS)
 		values[i++] = Float8GetDatumFast(tmp.blk_write_time);
 		values[i++] = TimestampTzGetDatum(tmp.first_call);
 		values[i++] = TimestampTzGetDatum(tmp.last_call);
+		values[i++] = Float8GetDatumFast(tmp.total_plan_duration_time);
+		values[i++] = Float8GetDatumFast(tmp.min_plan_duration_time);
+		values[i++] = Float8GetDatumFast(tmp.max_plan_duration_time);
+		values[i++] = Float8GetDatumFast(tmp.mean_plan_duration_time);
 		Assert(i == PG_STORE_PLANS_COLS);
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
