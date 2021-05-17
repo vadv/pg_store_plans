@@ -1,8 +1,8 @@
 -- complain if script is sourced in psql, rather than via ALTER EXTENSION
 \echo Use "ALTER EXTENSION pg_store_plans UPDATE TO '1.7'" to load this file. \quit
 
-DROP VIEW pg_store_plans;
-DROP FUNCTION pg_store_plans(boolean);
+DROP VIEW IF EXISTS pg_store_plans;
+DROP FUNCTION IF EXISTS pg_store_plans(boolean);
 CREATE FUNCTION pg_store_plans(IN showtext boolean,
     OUT userid oid,
     OUT dbid oid,
