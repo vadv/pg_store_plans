@@ -81,7 +81,7 @@ CREATE FUNCTION pg_store_plans(IN showtext boolean,
     OUT total_plan_time float8,
     OUT min_plan_time float8,
     OUT max_plan_time float8,
-    OUT mean_plan_time float8,
+    OUT mean_plan_time float8
 )
 RETURNS SETOF record
 AS 'MODULE_PATHNAME'
