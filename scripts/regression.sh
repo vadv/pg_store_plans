@@ -12,6 +12,7 @@ apt update
 export PGUSER=postgres
 export PGDATABASE=postgres
 export PGPORT=5432
+export PWD=$(pwd)
 
 apt install -y postgresql-13 postgresql-server-dev-13
 echo 'local all all trust' > /etc/postgresql/13/main/pg_hba.conf
@@ -20,5 +21,4 @@ export PG_CONFIG=/usr/lib/postgresql/13/bin/pg_config
 make clean && make && make install
 sudo -i -u postgres psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
 /etc/init.d/postgresql restart
-export PWD=$(pwd)
-sudo -i -u postgres "cd $PWD && make installcheck"
+sudo -i -u postgres bash -exc "cd $PWD && make installcheck"
