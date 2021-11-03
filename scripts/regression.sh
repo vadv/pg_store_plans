@@ -20,4 +20,5 @@ export PG_CONFIG=/usr/lib/postgresql/13/bin/pg_config
 make clean && make && make install
 sudo -i -u postgres psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
 /etc/init.d/postgresql restart
-sudo -i PWD=$(pwd) -u postgres make installcheck
+export PWD=$(pwd)
+sudo -i -u postgres "cd $PWD && make installcheck"
