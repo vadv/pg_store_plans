@@ -12,9 +12,11 @@ apt update
 export PGUSER=postgres
 export PGDATABASE=postgres
 export PGPORT=5432
+export PGHOST=127.0.0.1
 
 apt install -y postgresql-13 postgresql-server-dev-13
 echo 'local all all trust' > /etc/postgresql/13/main/pg_hba.conf
+echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/13/main/pg_hba.conf
 /etc/init.d/postgresql start
 export PG_CONFIG=/usr/lib/postgresql/13/bin/pg_config
 make clean && make && make install
