@@ -20,6 +20,6 @@ echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/13/main/pg_hba.conf
 /etc/init.d/postgresql restart
 export PG_CONFIG=/usr/lib/postgresql/13/bin/pg_config
 make clean && make && make install
-psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
+sudo -i -u postgres psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
 /etc/init.d/postgresql restart
-make installcheck
+sudo -i -u postgres make installcheck
