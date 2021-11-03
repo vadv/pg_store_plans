@@ -793,6 +793,7 @@ pgsp_planner(Query *parse,
 							  query_string,
 #endif
 							  cursorOptions, boundParams);
+			plan_nested_level--;
 		}
 		PG_CATCH();
 		{

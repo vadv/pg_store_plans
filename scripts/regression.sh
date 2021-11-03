@@ -11,13 +11,19 @@ apt update
 
 export PGUSER=postgres
 export PGDATABASE=postgres
-export PGPORT=5432
+export PGPORT=7432
+export PGVERSION=${PGVERSION:-10}
 
-apt install -y postgresql-13 postgresql-server-dev-13
-echo 'local all all trust' > /etc/postgresql/13/main/pg_hba.conf
-/etc/init.d/postgresql start
-export PG_CONFIG=/usr/lib/postgresql/13/bin/pg_config
+apt install -y postgresql-$PGVERSION postgresql-server-dev-$PGVERSION
+echo 'local all all trust' > /etc/postgresql/$PGVERSION/main/pg_hba.conf
+echo "port = $PGPORT" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+pg_ctlcluster $PGVERSION main start
+export PG_CONFIG=/usr/lib/postgresql/$PGVERSION/bin/pg_config
 make clean && make && make install
 psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
-/etc/init.d/postgresql restart
+pg_ctlcluster $PGVERSION main restart
 make installcheck
+
+# some pgbench
+pgbench -i -s 10
+pgbench -j 2 -c 10 -T 60 -P 1

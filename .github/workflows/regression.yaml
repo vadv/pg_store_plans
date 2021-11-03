@@ -1,8 +1,8 @@
-name: test-and-release
+name: regression
 on: [push]
 jobs:
 
-  test:
+  test-10:
     runs-on: ubuntu-18.04
     steps:
 
@@ -10,4 +10,34 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Tests
-      run: sudo ./scripts/regression.sh
+      run: sudo PGVERSION=10 ./scripts/regression.sh
+
+  test-11:
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Tests
+      run: sudo PGVERSION=11 ./scripts/regression.sh
+
+  test-12:
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Tests
+      run: sudo PGVERSION=12 ./scripts/regression.sh
+
+  test-13:
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Tests
+      run: sudo PGVERSION=13 ./scripts/regression.sh
