@@ -22,4 +22,4 @@ export PG_CONFIG=/usr/lib/postgresql/$PGVERSION/bin/pg_config
 make clean && make && make install
 psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
 pg_ctlcluster $PGVERSION main restart
-make installcheck
+make installcheck || (find . -name '*.out' -exec cat {} \; && exit 1)

@@ -1,4 +1,4 @@
-name: test-and-release
+name: regression
 on: [push]
 jobs:
 
