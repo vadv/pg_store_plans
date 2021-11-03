@@ -22,4 +22,8 @@ export PG_CONFIG=/usr/lib/postgresql/$PGVERSION/bin/pg_config
 make clean && make && make install
 psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
 pg_ctlcluster $PGVERSION main restart
-make installcheck || (find . -name 'regression.out' -exec cat {} \; && exit 1)
+make installcheck
+
+# some pgbench
+pgbench -i -s 10
+pgbench -j 2 -c 10 -T 60 -P 1
