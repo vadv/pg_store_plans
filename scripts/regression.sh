@@ -12,7 +12,7 @@ apt update
 export PGUSER=postgres
 export PGDATABASE=postgres
 export PGPORT=7432
-export PGVERSION=${PGVERSION:-13}
+export PGVERSION=${PGVERSION:-10}
 
 apt install -y postgresql-$PGVERSION postgresql-server-dev-$PGVERSION
 echo 'local all all trust' > /etc/postgresql/$PGVERSION/main/pg_hba.conf
