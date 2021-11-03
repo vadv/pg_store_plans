@@ -17,7 +17,7 @@ export PGHOST=127.0.0.1
 apt install -y postgresql-13 postgresql-server-dev-13
 echo 'local all all trust' > /etc/postgresql/13/main/pg_hba.conf
 echo 'host all all 0.0.0.0/0 trust' >> /etc/postgresql/13/main/pg_hba.conf
-/etc/init.d/postgresql start
+/etc/init.d/postgresql restart
 export PG_CONFIG=/usr/lib/postgresql/13/bin/pg_config
 make clean && make && make install
 psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
