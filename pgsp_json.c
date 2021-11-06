@@ -315,9 +315,8 @@ search_word_table(word_table * tbl, const char *word, int mode)
 {
 	word_table *p;
 
-	bool		longname =
+	bool longname =
 	(mode == PGSP_JSON_SHORTEN || mode == PGSP_JSON_NORMALIZE);
-
 
 	/*
 	 * Use simple linear search. We can gain too small portion of the whole
@@ -590,7 +589,6 @@ normalize_expr(char *expr, bool preserve_space)
 		if (IS_CONST(tok))
 		{
 			YYLTYPE		end;
-
 			tok = norm_yylex(expr, &yylval, &end, yyscanner);
 
 			/* Exit on parse error. */

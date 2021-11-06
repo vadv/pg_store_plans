@@ -81,7 +81,7 @@ pgspExplainTriggers(ExplainState *es, QueryDesc *queryDesc)
 		routerels = queryDesc->estate->es_tuple_routing_result_relations;
 		targrels = queryDesc->estate->es_trig_target_relations;
 #endif
-		
+
 		pgspExplainOpenGroup("Triggers", "Triggers", false, es);
 
 #if PG_VERSION_NUM < 140000
