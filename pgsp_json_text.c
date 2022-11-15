@@ -210,6 +210,11 @@ DEFAULT_SETTER(peak_sortspc_used);
 	(((l < 2) ? 0 : (TEXT_LEVEL_STEP * (l - 2) + TEXT_INDENT_OFFSET)) + e)
 #define TEXT_INDENT_DETAILS(l, e)					\
 	(TEXT_INDENT_BASE(l, e) + ((l < 2) ? 2 : 6))
+#define APPEND_STRING(s, val)                          \
+    if (val) \
+        appendStringInfoString(s, val); \
+    else                                       \
+        appendStringInfoString(s, "< empty string >")
 
 static void
 print_obj_name0(StringInfo s,
@@ -257,8 +262,8 @@ print_prop(StringInfo s, char *prepstr,
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
 	}
-	appendStringInfoString(s, prepstr);
-	appendStringInfoString(s, prop);
+	APPEND_STRING(s, prepstr);
+	APPEND_STRING(s, prop);
 }
 
 static void
@@ -277,8 +282,8 @@ print_propstr_if_exists(StringInfo s, char *prepstr,
 	{
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		appendStringInfoString(s, prepstr);
-		appendStringInfoString(s, prop->data);
+		APPEND_STRING(s, prepstr);
+		APPEND_STRING(s, prop->data);
 	}
 }
 
@@ -341,7 +346,7 @@ print_current_node(pgspParserContext * ctx)
 
 	if (HASSTRING(v->subplan_name))
 	{
-		appendStringInfoString(s, v->subplan_name);
+		APPEND_STRING(s, v->subplan_name);
 		appendStringInfoString(s, "\n");
 		exind = 2;
 		appendStringInfoSpaces(s, TEXT_INDENT_BASE(level, exind));
@@ -367,9 +372,9 @@ print_current_node(pgspParserContext * ctx)
 		case T_WorkTableScan:
 		case T_ForeignScan:
 			if (v->nodetag == T_ModifyTable)
-				appendStringInfoString(s, v->operation);
+				APPEND_STRING(s, v->operation);
 			else
-				appendStringInfoString(s, v->node_type);
+				APPEND_STRING(s, v->node_type);
 
 			print_obj_name(ctx);
 			break;
@@ -377,7 +382,7 @@ print_current_node(pgspParserContext * ctx)
 		case T_IndexScan:
 		case T_IndexOnlyScan:
 		case T_BitmapIndexScan:
-			appendStringInfoString(s, v->node_type);
+			APPEND_STRING(s, v->node_type);
 			print_prop_if_exists(s, " ", v->scan_dir, 0, 0);
 			print_prop_if_exists(s, " using ", v->index_name, 0, 0);
 			print_obj_name(ctx);
@@ -386,18 +391,18 @@ print_current_node(pgspParserContext * ctx)
 		case T_NestLoop:
 		case T_MergeJoin:
 		case T_HashJoin:
-			appendStringInfoString(s, v->node_type);
+			APPEND_STRING(s, v->node_type);
 			if (v->join_type && strcmp(v->join_type, "Inner") != 0)
 			{
 				appendStringInfoChar(s, ' ');
-				appendStringInfoString(s, v->join_type);
+				APPEND_STRING(s, v->join_type);
 			}
 			if (v->nodetag != T_NestLoop)
 				appendStringInfoString(s, " Join");
 			break;
 
 		case T_SetOp:
-			appendStringInfoString(s, v->node_type);
+			APPEND_STRING(s, v->node_type);
 			print_prop_if_exists(s, " ", v->setopcommand, 0, 0);
 			break;
 
@@ -416,7 +421,7 @@ print_current_node(pgspParserContext * ctx)
 				exind = -4;
 			}
 			else
-				appendStringInfoString(s, v->node_type);
+				APPEND_STRING(s, v->node_type);
 			break;
 	}
 
@@ -430,13 +435,13 @@ print_current_node(pgspParserContext * ctx)
 		HASSTRING(v->plan_width))
 	{
 		appendStringInfoString(s, "  (cost=");
-		appendStringInfoString(s, v->startup_cost);
+		APPEND_STRING(s, v->startup_cost);
 		appendStringInfoString(s, "..");
-		appendStringInfoString(s, v->total_cost);
+		APPEND_STRING(s, v->total_cost);
 		appendStringInfoString(s, " rows=");
-		appendStringInfoString(s, v->plan_rows);
+		APPEND_STRING(s, v->plan_rows);
 		appendStringInfoString(s, " width=");
-		appendStringInfoString(s, v->plan_width);
+		APPEND_STRING(s, v->plan_width);
 		appendStringInfoString(s, ")");
 	}
 
@@ -449,16 +454,16 @@ print_current_node(pgspParserContext * ctx)
 	{
 		appendStringInfoString(s, " (actual ");
 		appendStringInfoString(s, "time=");
-		appendStringInfoString(s, v->actual_startup_time);
+		APPEND_STRING(s, v->actual_startup_time);
 		appendStringInfoString(s, "..");
-		appendStringInfoString(s, v->actual_total_time);
+		APPEND_STRING(s, v->actual_total_time);
 		appendStringInfoString(s, " ");
 
 		appendStringInfoString(s, "rows=");
-		appendStringInfoString(s, v->actual_rows);
+		APPEND_STRING(s, v->actual_rows);
 
 		appendStringInfoString(s, " loops=");
-		appendStringInfoString(s, v->actual_loops);
+		APPEND_STRING(s, v->actual_loops);
 
 		appendStringInfoString(s, ")");
 	}
@@ -469,7 +474,7 @@ print_current_node(pgspParserContext * ctx)
 
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		appendStringInfoString(s, str);
+		APPEND_STRING(s, str);
 	}
 
 	print_propstr_if_exists(s, "Output: ", v->output, level, exind);
@@ -501,15 +506,15 @@ print_current_node(pgspParserContext * ctx)
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
 		appendStringInfoString(s, "Sort Method: ");
-		appendStringInfoString(s, v->sort_method);
+		APPEND_STRING(s, v->sort_method);
 
 		if (HASSTRING(v->sort_space_type) &&
 			HASSTRING(v->sort_space_used))
 		{
 			appendStringInfoString(s, "  ");
-			appendStringInfoString(s, v->sort_space_type);
+			APPEND_STRING(s, v->sort_space_type);
 			appendStringInfoString(s, ": ");
-			appendStringInfoString(s, v->sort_space_used);
+			APPEND_STRING(s, v->sort_space_used);
 			appendStringInfoString(s, "kB");
 		}
 	}
@@ -526,7 +531,7 @@ print_current_node(pgspParserContext * ctx)
 
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		appendStringInfoString(s, str->data);
+		APPEND_STRING(s, str->data);
 	}
 	v->_undef = NULL;
 
@@ -555,7 +560,7 @@ print_current_node(pgspParserContext * ctx)
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
 		appendStringInfoString(s, "Buckets: ");
-		appendStringInfoString(s, v->hash_buckets);
+		APPEND_STRING(s, v->hash_buckets);
 
 		/* See show_hash_info() in explain.c for details */
 		if ((v->org_hash_buckets &&
@@ -567,25 +572,25 @@ print_current_node(pgspParserContext * ctx)
 		if (show_original && v->org_hash_buckets)
 		{
 			appendStringInfoString(s, " (originally ");
-			appendStringInfoString(s, v->org_hash_buckets);
+			APPEND_STRING(s, v->org_hash_buckets);
 			appendStringInfoChar(s, ')');
 		}
 
 		if (!ISZERO(v->hash_batches))
 		{
 			appendStringInfoString(s, "  Batches: ");
-			appendStringInfoString(s, v->hash_batches);
+			APPEND_STRING(s, v->hash_batches);
 			if (show_original && v->org_hash_batches)
 			{
 				appendStringInfoString(s, " (originally ");
-				appendStringInfoString(s, v->org_hash_batches);
+				APPEND_STRING(s, v->org_hash_batches);
 				appendStringInfoChar(s, ')');
 			}
 		}
 		if (!ISZERO(v->peak_memory_usage))
 		{
 			appendStringInfoString(s, "  Memory Usage: ");
-			appendStringInfoString(s, v->peak_memory_usage);
+			APPEND_STRING(s, v->peak_memory_usage);
 			appendStringInfoString(s, "kB");
 		}
 	}
@@ -607,30 +612,30 @@ print_current_node(pgspParserContext * ctx)
 	{
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		appendStringInfoString(s, "Buffers: shared");
+		APPEND_STRING(s, "Buffers: shared");
 
 		if (!ISZERO(v->shared_hit_blks))
 		{
 			appendStringInfoString(s, " hit=");
-			appendStringInfoString(s, v->shared_hit_blks);
+			APPEND_STRING(s, v->shared_hit_blks);
 			comma = true;
 		}
 		if (!ISZERO(v->shared_read_blks))
 		{
 			appendStringInfoString(s, " read=");
-			appendStringInfoString(s, v->shared_read_blks);
+			APPEND_STRING(s, v->shared_read_blks);
 			comma = true;
 		}
 		if (!ISZERO(v->shared_dirtied_blks))
 		{
 			appendStringInfoString(s, " dirtied=");
-			appendStringInfoString(s, v->shared_dirtied_blks);
+			APPEND_STRING(s, v->shared_dirtied_blks);
 			comma = true;
 		}
 		if (!ISZERO(v->shared_written_blks))
 		{
 			appendStringInfoString(s, " written=");
-			appendStringInfoString(s, v->shared_written_blks);
+			APPEND_STRING(s, v->shared_written_blks);
 			comma = true;
 		}
 	}
@@ -651,25 +656,25 @@ print_current_node(pgspParserContext * ctx)
 		if (!ISZERO(v->local_hit_blks))
 		{
 			appendStringInfoString(s, " hit=");
-			appendStringInfoString(s, v->local_hit_blks);
+			APPEND_STRING(s, v->local_hit_blks);
 			comma = true;
 		}
 		if (!ISZERO(v->local_read_blks))
 		{
 			appendStringInfoString(s, " read=");
-			appendStringInfoString(s, v->local_read_blks);
+			APPEND_STRING(s, v->local_read_blks);
 			comma = true;
 		}
 		if (!ISZERO(v->local_dirtied_blks))
 		{
 			appendStringInfoString(s, " dirtied=");
-			appendStringInfoString(s, v->local_dirtied_blks);
+			APPEND_STRING(s, v->local_dirtied_blks);
 			comma = true;
 		}
 		if (!ISZERO(v->local_written_blks))
 		{
 			appendStringInfoString(s, " written=");
-			appendStringInfoString(s, v->local_written_blks);
+			APPEND_STRING(s, v->local_written_blks);
 			comma = true;
 		}
 	}
@@ -688,13 +693,13 @@ print_current_node(pgspParserContext * ctx)
 		if (!ISZERO(v->temp_read_blks))
 		{
 			appendStringInfoString(s, " read=");
-			appendStringInfoString(s, v->temp_read_blks);
+			APPEND_STRING(s, v->temp_read_blks);
 			comma = true;
 		}
 		if (!ISZERO(v->temp_written_blks))
 		{
 			appendStringInfoString(s, " written=");
-			appendStringInfoString(s, v->temp_written_blks);
+			APPEND_STRING(s, v->temp_written_blks);
 			comma = true;
 		}
 	}
@@ -711,12 +716,12 @@ print_current_node(pgspParserContext * ctx)
 		if (!ISZERO(v->io_read_time))
 		{
 			appendStringInfoString(s, " read=");
-			appendStringInfoString(s, v->io_read_time);
+			APPEND_STRING(s, v->io_read_time);
 		}
 		if (!ISZERO(v->io_write_time))
 		{
 			appendStringInfoString(s, " write=");
-			appendStringInfoString(s, v->io_write_time);
+			APPEND_STRING(s, v->io_write_time);
 		}
 	}
 }
@@ -732,11 +737,11 @@ print_current_trig_node(pgspParserContext * ctx)
 		if (s->len > 0)
 			appendStringInfoString(s, "\n");
 		appendStringInfoString(s, "Trigger ");
-		appendStringInfoString(s, v->trig_name);
+		APPEND_STRING(s, v->trig_name);
 		appendStringInfoString(s, ": time=");
-		appendStringInfoString(s, v->trig_time);
+		APPEND_STRING(s, v->trig_time);
 		appendStringInfoString(s, " calls=");
-		appendStringInfoString(s, v->trig_calls);
+		APPEND_STRING(s, v->trig_calls);
 	}
 }
 
@@ -797,7 +802,7 @@ json_text_objend(void *state)
 			ctx->work_str = makeStringInfo();
 
 		resetStringInfo(ctx->work_str);
-		appendStringInfoString(ctx->work_str, v->operation);
+		APPEND_STRING(ctx->work_str, v->operation);
 		print_obj_name0(ctx->work_str, v->obj_name, v->schema_name, v->alias);
 		v->target_tables = lappend(v->target_tables,
 								   pstrdup(ctx->work_str->data));
@@ -983,13 +988,13 @@ json_text_ofend(void *state, char *fname, bool isnull)
 		if (HASSTRING(v->plan_time))
 		{
 			appendStringInfoString(ctx->dest, "\nPlanning Time: ");
-			appendStringInfoString(ctx->dest, v->plan_time);
+			APPEND_STRING(ctx->dest, v->plan_time);
 			appendStringInfoString(ctx->dest, " ms");
 		}
 		else
 		{
 			appendStringInfoString(ctx->dest, "\nExecution Time: ");
-			appendStringInfoString(ctx->dest, v->exec_time);
+			APPEND_STRING(ctx->dest, v->exec_time);
 			appendStringInfoString(ctx->dest, " ms");
 		}
 		clear_nodeval(v);
