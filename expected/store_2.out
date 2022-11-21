@@ -100,14 +100,21 @@ SELECT test_explain();
  SELECT count(*) FROM (SELECT * FROM t1) AS x                               +
    totalcalls=6 , totalrows=6                                               +
  Aggregate  (cost=xxx rows=xxx width=xxx)                                   +
+   Async Capable: false                                                     +
    ->  Seq Scan on t1  (cost=xxx rows=xxx width=xxx)                        +
+         Async Capable: false                                               +
    calls=1, rows=1                                                          +
  Aggregate  (cost=xxx rows=xxx width=xxx)                                   +
+   Async Capable: false                                                     +
    ->  Bitmap Heap Scan on t1  (cost=xxx rows=xxx width=xxx)                +
+         Async Capable: false                                               +
          ->  Bitmap Index Scan using t1_a_idx  (cost=xxx rows=xxx width=xxx)+
+               Async Capable: false                                         +
    calls=2, rows=2                                                          +
  Aggregate  (cost=xxx rows=xxx width=xxx)                                   +
+   Async Capable: false                                                     +
    ->  Index Only Scan using t1_a_idx on t1  (cost=xxx rows=xxx width=xxx)  +
+         Async Capable: false                                               +
    calls=3, rows=3                                                          +
  
 (1 row)
