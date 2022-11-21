@@ -25,6 +25,7 @@ pg_ctlcluster $PGVERSION main restart
 make installcheck
 
 # some pgbench
+psql -c 'CREATE EXTENSION pg_store_plans'
 pgbench -i -s 10
 pgbench -j 2 -c 10 -T 60 -P 1
 psql -x -c 'select * from pg_store_plans'
