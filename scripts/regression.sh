@@ -27,3 +27,4 @@ make installcheck
 # some pgbench
 pgbench -i -s 10
 pgbench -j 2 -c 10 -T 60 -P 1
+psql -x -c 'select * from pg_store_plans'
