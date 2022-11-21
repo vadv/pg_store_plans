@@ -41,3 +41,13 @@ jobs:
 
     - name: Tests
       run: sudo PGVERSION=13 ./scripts/regression.sh
+
+  test-14:
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Tests
+      run: sudo PGVERSION=14 ./scripts/regression.sh
