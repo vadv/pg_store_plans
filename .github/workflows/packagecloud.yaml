@@ -17,3 +17,9 @@ jobs:
           export PG_CONFIG=/usr/lib/postgresql/$PG_VERSION/bin/pg_config
           ./.github/ubuntu-prepare.sh
           make
+          DESTDIR=/tmp/package make install
+          mkdir -p /tmp/deb
+      - name: Package
+        uses: bpicode/github-action-fpm@master
+        with:
+          fpm_opts: -s dir -t deb -C /tmp/package -d postgresql-$PG_VERSION --name "pg_store_plans" --version "1.8" --iteration 1 --description "${DESCRIPTION}" -p "/tmp/deb/pg_store_plans-1.8.deb"
