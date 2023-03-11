@@ -32,8 +32,8 @@ jobs:
       - name: Build deb
         uses: vadv/publish@main
         with:
-          command: fpm -s dir -t deb -C /github/home/package -d postgresql-$PG_VERSION --name "pg_store_plans" --version "1.8" --iteration 1 --description "vadv pg_store_plans" -p "/github/home/deb/pg_store_plans-1.8.deb"
+          command: fpm -s dir -t deb -C /github/workspace/package -d postgresql-$PG_VERSION --name "pg_store_plans" --version "1.8" --iteration 1 --description "vadv pg_store_plans" -p "/github/workspace/deb/pg_store_plans-1.8.deb"
       - name: Publish deb
         uses: vadv/publish@main
         with:
-          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} "/github/home/deb/pg_store_plans-1.8.deb"
+          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} "/github/workspace/deb/pg_store_plans-1.8.deb"
