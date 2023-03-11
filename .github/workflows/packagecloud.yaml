@@ -2,18 +2,22 @@ name: packagecloud
 on: [ push ]
 jobs:
   build-ubuntu-artifact-12:
-    runs-on: ${{ matrix.distrib }}
+    runs-on: ubuntu-${{ matrix.distrib }}
+    env:
+      PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
     strategy:
       matrix:
+        pg_version:
+          - 12
         distrib:
-          - ubuntu-18.04
-          - ubuntu-20.04
-          - ubuntu-22.04
+          - 18.04
+          - 20.04
+          - 22.04
     steps:
       - uses: actions/checkout@v3
       - name: Create artifact
         run: |
-          export PG_VERSION=12
+          export PG_VERSION=${{ matrix.pg_version }}
           export PG_CONFIG=/usr/lib/postgresql/$PG_VERSION/bin/pg_config
           ./.github/ubuntu-prepare.sh
           make
@@ -23,3 +27,8 @@ jobs:
         uses: bpicode/github-action-fpm@master
         with:
           fpm_opts: -s dir -t deb -C package -d postgresql-$PG_VERSION --name "pg_store_plans" --version "1.8" --iteration 1 --description "vadv pg_store_plans" -p "deb/pg_store_plans-1.8.deb"
+      - name: Publish
+        run: |
+          curl -s https://packagecloud.io/install/repositories/atotto/debian-utils/script.deb.sh | os=any dist=any sudo bash
+          sudo apt install -y packagecloud
+          packagecloud push vadv/pg_store_plans/ubuntu/{{ matix.distrib }} deb/*.deb
