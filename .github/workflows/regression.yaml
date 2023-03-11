@@ -1,5 +1,5 @@
 name: regression
-on: [push]
+on: [ push ]
 jobs:
   test:
     strategy:

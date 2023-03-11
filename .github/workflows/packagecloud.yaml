@@ -1,8 +1,8 @@
-name: packagecloud
+name: build-and-publish
 on:
   workflow_dispatch:
     inputs:
-      logLevel:
+      packageRelease:
         description: 'release'
         required: true
         default: '1.8'
@@ -30,8 +30,8 @@ jobs:
       - name: Build deb
         uses: vadv/publish@main
         with:
-          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans --version ${{ github.event.inputs.release }} --iteration 1 -p deb/pg_store_plans-${{ github.event.inputs.release }}.deb
+          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans --version ${{ github.event.inputs.packageRelease }} --iteration 1 -p deb/pg_store_plans-${{ github.event.inputs.packageRelease }}.deb
       - name: Publish deb
         uses: vadv/publish@main
         with:
-          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-${{ github.event.inputs.release }}.deb
+          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-${{ github.event.inputs.packageRelease }}.deb
