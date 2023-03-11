@@ -1,0 +1,21 @@
+name: packagecloud
+on: [ push ]
+jobs:
+  build-ubuntu-artifact:
+    runs-on: ${{ matrix.distrib }}
+    strategy:
+      matrix:
+        distrib:
+          - ubuntu-18.04
+          - ubuntu-20.04
+          - ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create artifact
+        run: |
+          apt-get update
+          git -y curl ca-certificates gnupg lsb-release build-essential
+          curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg
+          apt-get update
+          apt-get install -y postgresql-server-dev-12
+          make build
