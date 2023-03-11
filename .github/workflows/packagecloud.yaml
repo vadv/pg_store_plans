@@ -15,7 +15,6 @@ jobs:
           #- 22.04
     env:
       PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-      PACKAGE_VERSION: 1.8
     steps:
       - uses: actions/checkout@v3
       - name: Create artifact
@@ -29,8 +28,8 @@ jobs:
       - name: Build deb
         uses: vadv/publish@main
         with:
-          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans --version $PACKAGE_VERSION --iteration 1 -p deb/pg_store_plans-$PACKAGE_VERSION.deb
+          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans --version 1.8 --iteration 1 -p deb/pg_store_plans-1.8.deb
       - name: Publish deb
         uses: vadv/publish@main
         with:
-          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-$PACKAGE_VERSION.deb
+          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-1.8.deb
