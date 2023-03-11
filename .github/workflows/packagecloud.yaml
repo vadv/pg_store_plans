@@ -26,10 +26,10 @@ jobs:
           DESTDIR=package make install
           mkdir -p deb
       - name: Build deb
-        uses: vadv/publish@master
+        uses: vadv/publish@main
         with:
           command: fpm -s dir -t deb -C package -d postgresql-$PG_VERSION --name "pg_store_plans" --version "1.8" --iteration 1 --description "vadv pg_store_plans" -p "deb/pg_store_plans-1.8.deb"
       - name: Publish deb
-        uses: vadv/publish@master
+        uses: vadv/publish@main
         with:
           command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} "deb/pg_store_plans-1.8.deb"
