@@ -1,18 +1,18 @@
 name: packagecloud
 on: [ push ]
 jobs:
-  build-ubuntu-artifact:
+  ubuntu-packagecloud:
     runs-on: ubuntu-${{ matrix.distrib }}
     strategy:
       matrix:
         pg_version:
           - 12
-          - 13
-          - 14
+          #- 13
+          #- 14
         distrib:
-          - bionic
+          #- bionic
           - focal
-          - jammy
+          #- jammy
     env:
       PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
     steps:
