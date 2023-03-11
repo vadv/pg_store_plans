@@ -1,18 +1,20 @@
 name: packagecloud
-on: [ push ]
+on:
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'release'
+        required: true
+        default: '1.8'
+      tags:
+        description: 'Run build and release packages'
 jobs:
   ubuntu-packagecloud:
     runs-on: ubuntu-${{ matrix.distrib }}
     strategy:
       matrix:
-        pg_version:
-          - 12
-          #- 13
-          #- 14
-        distrib:
-          #- 18.04
-          - 20.04
-          #- 22.04
+        pg_version: [ 10, 11, 12, 13, 14 ]
+        distrib: [ 18.04, 20.04, 22.04 ]
     env:
       PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
     steps:
@@ -28,8 +30,8 @@ jobs:
       - name: Build deb
         uses: vadv/publish@main
         with:
-          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans --version 1.8 --iteration 1 -p deb/pg_store_plans-1.8.deb
+          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans --version ${{ github.event.inputs.release }} --iteration 1 -p deb/pg_store_plans-${{ github.event.inputs.release }}.deb
       - name: Publish deb
         uses: vadv/publish@main
         with:
-          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-1.8.deb
+          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-${{ github.event.inputs.release }}.deb
