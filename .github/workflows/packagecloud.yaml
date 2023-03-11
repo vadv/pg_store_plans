@@ -13,9 +13,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Create artifact
         run: |
-          apt-get update
-          git -y curl ca-certificates gnupg lsb-release build-essential
-          curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg
-          apt-get update
-          apt-get install -y postgresql-server-dev-12
+          sudo apt-get update
+          sudo apt-get -y git curl ca-certificates gnupg lsb-release build-essential
+          curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.postgresql.org.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-server-dev-12
           make build
