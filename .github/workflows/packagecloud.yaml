@@ -11,7 +11,7 @@ jobs:
           #- 14
         distrib:
           #- bionic
-          - focal
+          - 20.04
           #- jammy
     env:
       PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
