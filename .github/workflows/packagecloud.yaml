@@ -5,7 +5,7 @@ on:
       packageRelease:
         description: 'release'
         required: true
-        default: '1.8'
+        default: '1.8.X'
       tags:
         description: 'Run build and release packages'
 jobs:
@@ -30,8 +30,8 @@ jobs:
       - name: Build deb
         uses: vadv/publish@main
         with:
-          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans --version ${{ github.event.inputs.packageRelease }} --iteration 1 -p deb/pg_store_plans-${{ github.event.inputs.packageRelease }}.deb
+          command: fpm -s dir -t deb -C package -d postgresql-${{ matrix.pg_version }} --name pg_store_plans-${{ matrix.pg_version }} --version ${{ github.event.inputs.packageRelease }} --iteration 1 -p deb/pg_store_plans-${{ matrix.pg_version }}-${{ github.event.inputs.packageRelease }}.deb
       - name: Publish deb
         uses: vadv/publish@main
         with:
-          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-${{ github.event.inputs.packageRelease }}.deb
+          command: package_cloud push vadv/pg_store_plans/ubuntu/${{ matrix.distrib }} deb/pg_store_plans-${{ matrix.pg_version }}-${{ github.event.inputs.packageRelease }}.deb
