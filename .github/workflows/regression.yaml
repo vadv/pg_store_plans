@@ -4,7 +4,7 @@ jobs:
   test:
     strategy:
       matrix:
-        pg_version: [ 10, 11, 12, 13, 14 ]
+        pg_version: [ 9.6, 10, 11, 12, 13, 14 ]
     runs-on: ubuntu-18.04
     steps:
     - name: Checkout repo

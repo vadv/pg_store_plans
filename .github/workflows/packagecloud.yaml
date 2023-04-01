@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-${{ matrix.distrib }}
     strategy:
       matrix:
-        pg_version: [ 10, 11, 12, 13, 14 ]
+        pg_version: [ 9.6 10, 11, 12, 13, 14 ]
         distrib: [ 18.04, 20.04, 22.04 ]
     env:
       PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
