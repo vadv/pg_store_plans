@@ -1041,10 +1041,14 @@ pgsp_ProcessUtility(Node *parsetree, const char *queryString,
 								context, params, queryEnv,
 								dest, completionTag);
 #else
-	if (prev_ExecutorRun)
-		prev_ExecutorRun(queryDesc, direction, count);
+	if (prev_ProcessUtility)
+		prev_ProcessUtility(parsetree, queryString,
+							context, params,
+							dest, completionTag);
 	else
-		standard_ExecutorRun(queryDesc, direction, count);
+		standard_ProcessUtility(parsetree, queryString,
+								context, params,
+								dest, completionTag);
 #endif
 }
 
