@@ -891,8 +891,12 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
  * ExecutorRun hook: all we need do is track nesting depth
  */
 static void
+#if PG_VERSION_NUM >= 100000
 pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count,
 				 bool execute_once)
+#else
+pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count)
+#endif
 {
 	nested_level++;
 	PG_TRY();
