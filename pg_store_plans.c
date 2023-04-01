@@ -1277,7 +1277,11 @@ pg_store_plans(PG_FUNCTION_ARGS)
 	MemoryContext per_query_ctx;
 	MemoryContext oldcontext;
 	Oid			userid = GetUserId();
+#if PG_VERSION_NUM >= 100000
 	bool		is_allowed_role = is_member_of_role(GetUserId(), ROLE_PG_READ_ALL_STATS);
+#else
+	bool is_allowed_role = true;
+#endif
 	HASH_SEQ_STATUS hash_seq;
 	StatEntry  *entry;
 
