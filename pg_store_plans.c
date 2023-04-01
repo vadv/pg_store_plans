@@ -901,10 +901,17 @@ pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count)
 	nested_level++;
 	PG_TRY();
 	{
+#if PG_VERSION_NUM >= 100000
 		if (prev_ExecutorRun)
 			prev_ExecutorRun(queryDesc, direction, count, execute_once);
 		else
 			standard_ExecutorRun(queryDesc, direction, count, execute_once);
+#else
+		if (prev_ExecutorRun)
+			prev_ExecutorRun(queryDesc, direction, count);
+		else
+			standard_ExecutorRun(queryDesc, direction, count);
+#endif
 		nested_level--;
 	}
 	PG_CATCH();
