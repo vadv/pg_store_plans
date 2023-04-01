@@ -290,18 +290,30 @@ static PlannedStmt *pgsp_planner(Query *parse,
 								 int cursorOptions,
 								 ParamListInfo boundParams);
 static void pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags);
+#if PG_VERSION_NUM >= 100000
 static void pgsp_ExecutorRun(QueryDesc *queryDesc,
 							 ScanDirection direction,
 							 uint64 count, bool execute_once);
+#else
+static void pgsp_ExecutorRun(QueryDesc *queryDesc,
+							 ScanDirection direction,
+							 uint64 count);
+#endif
 static void pgsp_ExecutorFinish(QueryDesc *queryDesc);
 static void pgsp_ExecutorEnd(QueryDesc *queryDesc);
+#if PG_VERSION_NUM >= 100000
 static void pgsp_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
-#if PG_VERSION_NUM >= 140000
+	#if PG_VERSION_NUM >= 140000
 								bool readOnlyTree,
-#endif
+	#endif
 								ProcessUtilityContext context, ParamListInfo params,
 								QueryEnvironment *queryEnv,
 								DestReceiver *dest, COMPTAG_TYPE * completionTag);
+#else
+static void pgsp_ProcessUtility(Node *parsetree, const char *queryString,
+								ProcessUtilityContext context, ParamListInfo params,
+								DestReceiver *dest, char *completionTag);
+#endif
 static uint32 hash_query(const char *query);
 static void store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 						double total_time, double plan_duration, uint64 rows,
@@ -986,6 +998,7 @@ pgsp_ExecutorEnd(QueryDesc *queryDesc)
 /*
  * ProcessUtility hook
  */
+#if PG_VERSION_NUM >= 100000
 static void
 pgsp_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 #if PG_VERSION_NUM >= 140000
@@ -994,7 +1007,12 @@ pgsp_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 					ProcessUtilityContext context, ParamListInfo params,
 					QueryEnvironment *queryEnv,
 					DestReceiver *dest, COMPTAG_TYPE * completionTag)
+#else
+static void
+pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count)
+#endif
 {
+#if PG_VERSION_NUM >= 100000
 	if (prev_ProcessUtility)
 		prev_ProcessUtility(pstmt, queryString,
 #if PG_VERSION_NUM >= 140000
@@ -1009,6 +1027,12 @@ pgsp_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 #endif
 								context, params, queryEnv,
 								dest, completionTag);
+#else
+	if (prev_ExecutorRun)
+		prev_ExecutorRun(queryDesc, direction, count);
+	else
+		standard_ExecutorRun(queryDesc, direction, count);
+#endif
 }
 
 /*
