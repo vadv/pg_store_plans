@@ -1020,7 +1020,9 @@ pgsp_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
 					DestReceiver *dest, COMPTAG_TYPE * completionTag)
 #else
 static void
-pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count)
+pgsp_ProcessUtility(Node *parsetree, const char *queryString,
+					ProcessUtilityContext context, ParamListInfo params,
+					DestReceiver *dest, char *completionTag)
 #endif
 {
 #if PG_VERSION_NUM >= 100000
