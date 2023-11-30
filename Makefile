@@ -1,6 +1,6 @@
 # pg_stat_plan/Makefile
 
-SHELL=/usr/bin/env bash
+SHELL = bash
 
 MODULES = pg_store_plans
 
