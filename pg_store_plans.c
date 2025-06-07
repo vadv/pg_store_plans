@@ -187,6 +187,7 @@ static ExecutorRun_hook_type prev_ExecutorRun = NULL;
 static ExecutorFinish_hook_type prev_ExecutorFinish = NULL;
 static ExecutorEnd_hook_type prev_ExecutorEnd = NULL;
 static ProcessUtility_hook_type prev_ProcessUtility = NULL;
+static void pgsp_shmem_request(void);
 
 /* Links to shared memory state */
 static SharedState * shared_state = NULL;
@@ -287,6 +288,10 @@ PG_FUNCTION_INFO_V1(pg_store_plans_xmlplan);
 
 #if PG_VERSION_NUM < 140000
 #define ROLE_PG_READ_ALL_STATS		DEFAULT_ROLE_READ_ALL_STATS
+#endif
+
+#if PG_VERSION_NUM >= 150000
+static shmem_request_hook_type prev_shmem_request_hook = NULL;
 #endif
 
 static void pgsp_shmem_startup(void);
@@ -505,20 +510,19 @@ _PG_init(void)
 
 	EmitWarningsOnPlaceholders("pg_store_plans");
 
-	/*
-	 * Request additional shared resources.  (These are no-ops if we're not in
-	 * the postmaster process.)  We'll allocate or attach to the shared
-	 * resources in pgsp_shmem_startup().
-	 */
-	RequestAddinShmemSpace(shared_mem_size());
-	RequestNamedLWLockTranche("pg_store_plans", 1);
+#if PG_VERSION_NUM < 150000
+	pgsp_shmem_request();
+#endif
 
 	/*
 	 * Install hooks.
 	 */
-	prev_shmem_startup_hook = shmem_startup_hook;
-	shmem_startup_hook = pgsp_shmem_startup;
+#if PG_VERSION_NUM >= 150000
+	prev_shmem_request_hook = shmem_request_hook;
+	shmem_request_hook = pgsp_shmem_request;
+#endif
 	prev_planner_hook = planner_hook;
+	shmem_startup_hook = pgsp_shmem_startup;
 	planner_hook = pgsp_planner;
 	prev_ExecutorStart = ExecutorStart_hook;
 	ExecutorStart_hook = pgsp_ExecutorStart;
@@ -546,6 +550,22 @@ _PG_fini(void)
 	ExecutorFinish_hook = prev_ExecutorFinish;
 	ExecutorEnd_hook = prev_ExecutorEnd;
 	ProcessUtility_hook = prev_ProcessUtility;
+}
+
+/*
+ * pgsp_shmem_request: request shared memory to the core.
+ * Called as a hook in PG15 or later, otherwise called from _PG_init().
+ */
+static void
+pgsp_shmem_request(void)
+{
+#if PG_VERSION_NUM >= 150000
+	if (prev_shmem_request_hook)
+		prev_shmem_request_hook();
+#endif
+
+	RequestAddinShmemSpace(shared_mem_size());
+	RequestNamedLWLockTranche("pg_store_plans", 1);
 }
 
 /*
