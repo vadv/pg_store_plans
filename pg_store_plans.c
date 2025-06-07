@@ -59,7 +59,7 @@
 #include "utils/queryjumble.h"
 #endif
 #include "utils/timestamp.h"
-#if PG_VERSION_NUM >= 160000
+#if PG_VERSION_NUM >= 150000
 #include "common/pg_prng.h"
 #endif
 
