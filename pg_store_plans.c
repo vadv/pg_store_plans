@@ -877,7 +877,7 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			(log_buffers ? INSTRUMENT_BUFFERS : 0);
 	}
 
-#if PG_VERSION_NUM >= 160000
+#if PG_VERSION_NUM >= 150000
 	current_query_sampled = (pg_prng_double(&pg_global_prng_state) < sample_rate);
 #else
 	current_query_sampled = (random() < sample_rate * ((double) MAX_RANDOM_VALUE + 1));
