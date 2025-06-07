@@ -1,13 +1,13 @@
 name: regression
-on: [ push ]
+on: [push]
 jobs:
   test:
     strategy:
       matrix:
-        pg_version: [ 10, 11, 12, 13, 14 ]
+        pg_version: [10, 11, 12, 13, 14, 15, 16, 17]
     runs-on: ubuntu-18.04
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
-    - name: Tests
-      run: sudo PGVERSION=${{ matrix.pg_version }} ./scripts/regression.sh
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Tests
+        run: sudo PGVERSION=${{ matrix.pg_version }} ./scripts/regression.sh
