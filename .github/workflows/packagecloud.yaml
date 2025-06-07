@@ -3,18 +3,18 @@ on:
   workflow_dispatch:
     inputs:
       packageRelease:
-        description: 'release'
+        description: "release"
         required: true
-        default: '1.8.X'
+        default: "1.8.X"
       tags:
-        description: 'Run build and release packages'
+        description: "Run build and release packages"
 jobs:
   ubuntu-packagecloud:
     runs-on: ubuntu-${{ matrix.distrib }}
     strategy:
       matrix:
-        pg_version: [ 10, 11, 12, 13, 14 ]
-        distrib: [ 18.04, 20.04, 22.04 ]
+        pg_version: [10, 11, 12, 13, 14, 15, 16, 17]
+        distrib: [18.04, 20.04, 22.04]
     env:
       PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
     steps:

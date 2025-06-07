@@ -53,7 +53,15 @@
 #include "tcop/utility.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#if PG_VERSION_NUM >= 160000
+#include "nodes/queryjumble.h"
+#elif PG_VERSION_NUM >= 140000
+#include "utils/queryjumble.h"
+#endif
 #include "utils/timestamp.h"
+#if PG_VERSION_NUM >= 160000
+#include "common/pg_prng.h"
+#endif
 
 #include "pgsp_json.h"
 #include "pgsp_explain.h"
@@ -222,7 +230,7 @@ static const struct config_enum_entry plan_formats[] =
 };
 
 static int	store_size;			/* max # statements to track */
-static int	track_level;		/* tracking level */
+static int	track_level = TRACK_LEVEL_TOP; /* tracking level */
 static int	min_duration;		/* min duration to record */
 static int	slow_statement_duration;	/* slow log to record */
 static bool dump_on_shutdown;	/* whether to save stats across shutdown */
@@ -234,7 +242,7 @@ static bool log_triggers;		/* whether to log trigger statistics  */
 static bool store_last_plan;	/* always update plan */
 static double sample_rate = 1;	/* sample rate */
 static bool pgsp_track_planning;	/* whether to track planning duration */
-static int	plan_format;		/* Plan representation style in
+static int  plan_format= PLAN_FORMAT_TEXT;		/* Plan representation style in
 								 * pg_store_plans.plan  */
 
 /* Is the current top-level query to be sampled? */
@@ -849,7 +857,11 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 			(log_buffers ? INSTRUMENT_BUFFERS : 0);
 	}
 
+#if PG_VERSION_NUM >= 160000
+	current_query_sampled = (pg_prng_double(&pg_global_prng_state) < sample_rate);
+#else
 	current_query_sampled = (random() < sample_rate * ((double) MAX_RANDOM_VALUE + 1));
+#endif
 
 	if (prev_ExecutorStart)
 		prev_ExecutorStart(queryDesc, eflags);
@@ -1191,8 +1203,19 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 	e->counters.local_blks_written += bufusage->local_blks_written;
 	e->counters.temp_blks_read += bufusage->temp_blks_read;
 	e->counters.temp_blks_written += bufusage->temp_blks_written;
+	#if PG_VERSION_NUM >= 170000
+    e->counters.blk_read_time +=
+                INSTR_TIME_GET_MILLISEC(bufusage->shared_blk_read_time);
+    e->counters.blk_read_time +=
+                INSTR_TIME_GET_MILLISEC(bufusage->local_blk_read_time);
+    e->counters.blk_write_time +=
+                INSTR_TIME_GET_MILLISEC(bufusage->shared_blk_write_time);
+    e->counters.blk_write_time +=
+                INSTR_TIME_GET_MILLISEC(bufusage->local_blk_write_time);
+#else
 	e->counters.blk_read_time += INSTR_TIME_GET_MILLISEC(bufusage->blk_read_time);
 	e->counters.blk_write_time += INSTR_TIME_GET_MILLISEC(bufusage->blk_write_time);
+#endif
 	e->counters.last_call = GetCurrentTimestamp();
 	e->counters.usage += USAGE_EXEC(total_time);
 
@@ -1295,18 +1318,9 @@ pg_store_plans(PG_FUNCTION_ARGS)
 
 		values[i++] = ObjectIdGetDatum(entry->key.userid);
 		values[i++] = ObjectIdGetDatum(entry->key.dbid);
-		if (is_allowed_role || entry->key.userid == userid)
-		{
-			values[i++] = Int64GetDatumFast(queryid);
-			values[i++] = Int64GetDatumFast(planid);
-			values[i++] = Int64GetDatumFast(queryid_stmt);
-		}
-		else
-		{
-			values[i++] = Int64GetDatumFast(0);
-			values[i++] = Int64GetDatumFast(0);
-			values[i++] = Int64GetDatumFast(0);
-		}
+		values[i++] = Int64GetDatumFast(queryid);
+		values[i++] = Int64GetDatumFast(planid);
+		values[i++] = Int64GetDatumFast(queryid_stmt);
 
 
 		if (showtext && (is_allowed_role || entry->key.userid == userid))
@@ -1409,9 +1423,10 @@ pg_store_plans(PG_FUNCTION_ARGS)
 
 	LWLockRelease(shared_state->lock);
 
+#if PG_VERSION_NUM < 170000
 	/* clean up and return the tuplestore */
 	tuplestore_donestoring(tupstore);
-
+#endif
 	return (Datum) 0;
 }
 

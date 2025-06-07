@@ -2,7 +2,8 @@
  *
  * pgsp_json_text.h: Text plan generator for pg_store_plans.
  *
- * Copyright (c) 2012-2020, NIPPON TELEGRAPH AND TELEPHONE CORPORATION
+ * Copyright (c) 2008-2025, PostgreSQL Global Development Group
+ * Copyright (c) 2012-2025, NIPPON TELEGRAPH AND TELEPHONE CORPORATION
  *
  * IDENTIFICATION
  *	  pg_store_plans/pgsp_json_text.c
@@ -26,22 +27,32 @@
 #include "pgsp_json_text.h"
 #include "pgsp_json_int.h"
 
-static void clear_nodeval(node_vals * vals);
-static void print_current_node(pgspParserContext * ctx);
-static void print_current_trig_node(pgspParserContext * ctx);
+#if PG_VERSION_NUM < 160000
+#define JsonParseErrorType void
+#define JSONACTION_RETURN_SUCCESS()
+#else
+#define JSONACTION_RETURN_SUCCESS() return JSON_SUCCESS
+#endif
+
+static void clear_nodeval(node_vals *vals);
+static void print_current_node(pgspParserContext *ctx);
+static void print_current_trig_node(pgspParserContext *ctx);
 static void print_prop(StringInfo s, char *prepstr,
 					   const char *prop, int leve, int exind);
 static void print_prop_if_exists(StringInfo s, char *prepstr,
 								 const char *prop, int leve, int exind);
 static void print_prop_if_nz(StringInfo s, char *prepstr,
 							 const char *prop, int leve, int exind);
-static void json_text_objstart(void *state);
-static void json_text_objend(void *state);
-static void json_text_arrstart(void *state);
-static void json_text_arrend(void *state);
-static void json_text_ofstart(void *state, char *fname, bool isnull);
-static void json_text_ofend(void *state, char *fname, bool isnull);
-static void json_text_scalar(void *state, char *token, JsonTokenType tokentype);
+static JsonParseErrorType json_text_objstart(void *state);
+static JsonParseErrorType json_text_objend(void *state);
+static JsonParseErrorType json_text_arrstart(void *state);
+static JsonParseErrorType json_text_arrend(void *state);
+static JsonParseErrorType json_text_ofstart(void *state, char *fname,
+											bool isnull);
+static JsonParseErrorType json_text_ofend(void *state, char *fname,
+										  bool isnull);
+static JsonParseErrorType json_text_scalar(void *state, char *token,
+										   JsonTokenType tokentype);
 
 /* Parser callbacks for plan textization */
 
@@ -52,16 +63,16 @@ static void json_text_scalar(void *state, char *token, JsonTokenType tokentype);
  */
 SETTERDECL(_undef)
 {
-	StringInfo	s;
+	StringInfo s;
 
-	if (vals->_undef_newelem)
+	if(vals->_undef_newelem)
 	{
 		s = makeStringInfo();
 		vals->_undef = lappend(vals->_undef, s);
 	}
 	else
 	{
-		s = llast(vals->_undef);
+		s = llast (vals->_undef);
 	}
 
 	appendStringInfoString(s, val);
@@ -97,14 +108,11 @@ SETTERDECL(strategy)
 			switch (p->tag)
 			{
 				case S_Hashed:
-					vals->node_type = "HashAggregate";
-					break;
+					vals->node_type = "HashAggregate"; break;
 				case S_Sorted:
-					vals->node_type = "GroupAggregate";
-					break;
+					vals->node_type = "GroupAggregate"; break;
 				case S_Mixed:
-					vals->node_type = "MixedAggregate";
-					break;
+					vals->node_type = "MixedAggregate"; break;
 				default:
 					break;
 			}
@@ -119,7 +127,6 @@ SETTERDECL(strategy)
 			break;
 	}
 }
-
 CONVERSION_SETTER(scan_dir, conv_scandir);
 SQLQUOTE_SETTER(obj_name);
 SQLQUOTE_SETTER(alias);
@@ -194,6 +201,7 @@ DEFAULT_SETTER(worker_number);
 DEFAULT_SETTER(workers_planned);
 DEFAULT_SETTER(workers_launched);
 BOOL_SETTER(inner_unique);
+BOOL_SETTER(async_capable);
 DEFAULT_SETTER(table_func_name);
 LIST_SETTER(presorted_key);
 LIST_SETTER(sortmethod_used);
@@ -210,17 +218,12 @@ DEFAULT_SETTER(peak_sortspc_used);
 	(((l < 2) ? 0 : (TEXT_LEVEL_STEP * (l - 2) + TEXT_INDENT_OFFSET)) + e)
 #define TEXT_INDENT_DETAILS(l, e)					\
 	(TEXT_INDENT_BASE(l, e) + ((l < 2) ? 2 : 6))
-#define APPEND_STRING(s, val)                          \
-    if (val) \
-        appendStringInfoString(s, val); \
-    else                                       \
-        appendStringInfoString(s, "< empty string >")
 
 static void
 print_obj_name0(StringInfo s,
 				const char *obj_name, const char *schema_name, const char *alias)
 {
-	bool		on_written = false;
+	bool on_written = false;
 
 	if (HASSTRING(obj_name))
 	{
@@ -245,10 +248,10 @@ print_obj_name0(StringInfo s,
 }
 
 static void
-print_obj_name(pgspParserContext * ctx)
+print_obj_name(pgspParserContext *ctx)
 {
-	node_vals  *v = ctx->nodevals;
-	StringInfo	s = ctx->dest;
+	node_vals *v = ctx->nodevals;
+	StringInfo s = ctx->dest;
 
 	print_obj_name0(s, v->obj_name, v->schema_name, v->alias);
 }
@@ -262,8 +265,8 @@ print_prop(StringInfo s, char *prepstr,
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
 	}
-	APPEND_STRING(s, prepstr);
-	APPEND_STRING(s, prop);
+	appendStringInfoString(s, prepstr);
+	appendStringInfoString(s, prop);
 }
 
 static void
@@ -282,20 +285,20 @@ print_propstr_if_exists(StringInfo s, char *prepstr,
 	{
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		APPEND_STRING(s, prepstr);
-		APPEND_STRING(s, prop->data);
+		appendStringInfoString(s, prepstr);
+		appendStringInfoString(s, prop->data);
 	}
 }
 
 static void
 print_groupingsets_if_exists(StringInfo s, List *gss, int level, int exind)
 {
-	ListCell   *lc;
+	ListCell *lc;
 
-	foreach(lc, gss)
+	foreach (lc, gss)
 	{
-		ListCell   *lcg;
-		grouping_set *gs = (grouping_set *) lfirst(lc);
+		ListCell *lcg;
+		grouping_set *gs = (grouping_set *)lfirst (lc);
 
 		if (gs->sort_keys)
 		{
@@ -303,10 +306,9 @@ print_groupingsets_if_exists(StringInfo s, List *gss, int level, int exind)
 			exind += 2;
 		}
 
-		foreach(lcg, gs->group_keys)
+		foreach (lcg, gs->group_keys)
 		{
-			const char *gk = (const char *) lfirst(lcg);
-
+			const char *gk = (const char *)lfirst (lcg);
 			print_prop_if_exists(s, gs->key_type, gk, level, exind);
 		}
 
@@ -322,14 +324,14 @@ print_prop_if_nz(StringInfo s, char *prepstr,
 }
 
 static void
-print_current_node(pgspParserContext * ctx)
+print_current_node(pgspParserContext *ctx)
 {
-	node_vals  *v = ctx->nodevals;
-	StringInfo	s = ctx->dest;
-	ListCell   *lc;
-	int			level = ctx->level - 1;
-	bool		comma = false;
-	int			exind = 0;
+	node_vals *v = ctx->nodevals;
+	StringInfo s = ctx->dest;
+	ListCell *lc;
+	int level = ctx->level - 1;
+	bool comma = false;
+	int exind = 0;
 
 	/*
 	 * The element objects in "Workers" list doesn't have node type, which
@@ -346,7 +348,7 @@ print_current_node(pgspParserContext * ctx)
 
 	if (HASSTRING(v->subplan_name))
 	{
-		APPEND_STRING(s, v->subplan_name);
+		appendStringInfoString(s, v->subplan_name);
 		appendStringInfoString(s, "\n");
 		exind = 2;
 		appendStringInfoSpaces(s, TEXT_INDENT_BASE(level, exind));
@@ -358,6 +360,9 @@ print_current_node(pgspParserContext * ctx)
 
 	if (v->parallel_aware)
 		appendStringInfoString(s, "Parallel ");
+
+	if (v->async_capable)
+		appendStringInfoString(s, "Async ");
 
 	switch (v->nodetag)
 	{
@@ -372,9 +377,9 @@ print_current_node(pgspParserContext * ctx)
 		case T_WorkTableScan:
 		case T_ForeignScan:
 			if (v->nodetag == T_ModifyTable)
-				APPEND_STRING(s, v->operation);
+				appendStringInfoString(s, v->operation);
 			else
-				APPEND_STRING(s, v->node_type);
+				appendStringInfoString(s, v->node_type);
 
 			print_obj_name(ctx);
 			break;
@@ -382,7 +387,7 @@ print_current_node(pgspParserContext * ctx)
 		case T_IndexScan:
 		case T_IndexOnlyScan:
 		case T_BitmapIndexScan:
-			APPEND_STRING(s, v->node_type);
+			appendStringInfoString(s, v->node_type);
 			print_prop_if_exists(s, " ", v->scan_dir, 0, 0);
 			print_prop_if_exists(s, " using ", v->index_name, 0, 0);
 			print_obj_name(ctx);
@@ -391,18 +396,18 @@ print_current_node(pgspParserContext * ctx)
 		case T_NestLoop:
 		case T_MergeJoin:
 		case T_HashJoin:
-			APPEND_STRING(s, v->node_type);
+			appendStringInfoString(s, v->node_type);
 			if (v->join_type && strcmp(v->join_type, "Inner") != 0)
 			{
 				appendStringInfoChar(s, ' ');
-				APPEND_STRING(s, v->join_type);
+				appendStringInfoString(s, v->join_type);
 			}
 			if (v->nodetag != T_NestLoop)
 				appendStringInfoString(s, " Join");
 			break;
 
 		case T_SetOp:
-			APPEND_STRING(s, v->node_type);
+			appendStringInfoString(s, v->node_type);
 			print_prop_if_exists(s, " ", v->setopcommand, 0, 0);
 			break;
 
@@ -415,13 +420,13 @@ print_current_node(pgspParserContext * ctx)
 
 				/*
 				 * "Worker"s are individual JSON objects in a JSON list but
-				 * should be printed as just a property in text representaion.
-				 * Correct indent using exind here.
+				 * should be printed as just a property in text
+				 * representaion. Correct indent using exind here.
 				 */
 				exind = -4;
 			}
 			else
-				APPEND_STRING(s, v->node_type);
+				appendStringInfoString(s, v->node_type);
 			break;
 	}
 
@@ -435,13 +440,13 @@ print_current_node(pgspParserContext * ctx)
 		HASSTRING(v->plan_width))
 	{
 		appendStringInfoString(s, "  (cost=");
-		APPEND_STRING(s, v->startup_cost);
+		appendStringInfoString(s, v->startup_cost);
 		appendStringInfoString(s, "..");
-		APPEND_STRING(s, v->total_cost);
+		appendStringInfoString(s, v->total_cost);
 		appendStringInfoString(s, " rows=");
-		APPEND_STRING(s, v->plan_rows);
+		appendStringInfoString(s, v->plan_rows);
 		appendStringInfoString(s, " width=");
-		APPEND_STRING(s, v->plan_width);
+		appendStringInfoString(s, v->plan_width);
 		appendStringInfoString(s, ")");
 	}
 
@@ -454,37 +459,37 @@ print_current_node(pgspParserContext * ctx)
 	{
 		appendStringInfoString(s, " (actual ");
 		appendStringInfoString(s, "time=");
-		APPEND_STRING(s, v->actual_startup_time);
+		appendStringInfoString(s, v->actual_startup_time);
 		appendStringInfoString(s, "..");
-		APPEND_STRING(s, v->actual_total_time);
+		appendStringInfoString(s, v->actual_total_time);
 		appendStringInfoString(s, " ");
 
 		appendStringInfoString(s, "rows=");
-		APPEND_STRING(s, v->actual_rows);
+		appendStringInfoString(s, v->actual_rows);
 
 		appendStringInfoString(s, " loops=");
-		APPEND_STRING(s, v->actual_loops);
+		appendStringInfoString(s, v->actual_loops);
 
 		appendStringInfoString(s, ")");
 	}
 
 	foreach(lc, v->target_tables)
 	{
-		char	   *str = (char *) lfirst(lc);
+		char *str = (char *)lfirst (lc);
 
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		APPEND_STRING(s, str);
+		appendStringInfoString(s, str);
 	}
 
 	print_propstr_if_exists(s, "Output: ", v->output, level, exind);
 	print_propstr_if_exists(s, "Group Key: ", v->group_key, level, exind);
 	print_groupingsets_if_exists(s, v->grouping_sets, level, exind);
 	print_prop_if_exists(s, "Merge Cond: ", v->merge_cond, level, exind);
-	print_prop_if_exists(s, "Hash Cond: ", v->hash_cond, level, exind);
-	print_prop_if_exists(s, "Tid Cond: ", v->tid_cond, level, exind);
-	print_prop_if_exists(s, "Join Filter: ", v->join_filter, level, exind);
-	print_prop_if_exists(s, "Index Cond: ", v->index_cond, level, exind);
+	print_prop_if_exists(s, "Hash Cond: " , v->hash_cond, level, exind);
+	print_prop_if_exists(s, "Tid Cond: " , v->tid_cond, level, exind);
+	print_prop_if_exists(s, "Join Filter: " , v->join_filter, level, exind);
+	print_prop_if_exists(s, "Index Cond: " , v->index_cond, level, exind);
 	print_prop_if_exists(s, "Recheck Cond: ", v->recheck_cond, level, exind);
 	print_prop_if_exists(s, "Workers Planned: ", v->workers_planned, level, exind);
 	print_prop_if_exists(s, "Workers Launched: ", v->workers_launched, level, exind);
@@ -506,15 +511,15 @@ print_current_node(pgspParserContext * ctx)
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
 		appendStringInfoString(s, "Sort Method: ");
-		APPEND_STRING(s, v->sort_method);
+		appendStringInfoString(s, v->sort_method);
 
 		if (HASSTRING(v->sort_space_type) &&
 			HASSTRING(v->sort_space_used))
 		{
 			appendStringInfoString(s, "  ");
-			APPEND_STRING(s, v->sort_space_type);
+			appendStringInfoString(s, v->sort_space_type);
 			appendStringInfoString(s, ": ");
-			APPEND_STRING(s, v->sort_space_used);
+			appendStringInfoString(s, v->sort_space_used);
 			appendStringInfoString(s, "kB");
 		}
 	}
@@ -525,23 +530,23 @@ print_current_node(pgspParserContext * ctx)
 	 * Emit unknown properties here. The properties are printed in the same
 	 * shape with JSON properties as assumed by explain.c.
 	 */
-	foreach(lc, v->_undef)
+	foreach (lc, v->_undef)
 	{
-		StringInfo	str = (StringInfo) lfirst(lc);
+		StringInfo str = (StringInfo) lfirst(lc);
 
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		APPEND_STRING(s, str->data);
+		appendStringInfoString(s, str->data);
 	}
 	v->_undef = NULL;
 
 	print_prop_if_exists(s, "Filter: ", v->filter, level, exind);
 	print_prop_if_nz(s, "Rows Removed by Filter: ",
-					 v->filter_removed, level, exind);
+						 v->filter_removed, level, exind);
 	print_prop_if_nz(s, "Rows Removed by Index Recheck: ",
-					 v->idxrchk_removed, level, exind);
+						 v->idxrchk_removed, level, exind);
 	print_prop_if_nz(s, "Rows Removed by Join Filter: ",
-					 v->joinfilt_removed, level, exind);
+						 v->joinfilt_removed, level, exind);
 
 	if (HASSTRING(v->exact_heap_blks) ||
 		HASSTRING(v->lossy_heap_blks))
@@ -555,12 +560,12 @@ print_current_node(pgspParserContext * ctx)
 
 	if (!ISZERO(v->hash_buckets))
 	{
-		bool		show_original = false;
+		bool show_original = false;
 
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
 		appendStringInfoString(s, "Buckets: ");
-		APPEND_STRING(s, v->hash_buckets);
+		appendStringInfoString(s, v->hash_buckets);
 
 		/* See show_hash_info() in explain.c for details */
 		if ((v->org_hash_buckets &&
@@ -572,25 +577,25 @@ print_current_node(pgspParserContext * ctx)
 		if (show_original && v->org_hash_buckets)
 		{
 			appendStringInfoString(s, " (originally ");
-			APPEND_STRING(s, v->org_hash_buckets);
+			appendStringInfoString(s, v->org_hash_buckets);
 			appendStringInfoChar(s, ')');
 		}
 
 		if (!ISZERO(v->hash_batches))
 		{
 			appendStringInfoString(s, "  Batches: ");
-			APPEND_STRING(s, v->hash_batches);
+			appendStringInfoString(s, v->hash_batches);
 			if (show_original && v->org_hash_batches)
 			{
 				appendStringInfoString(s, " (originally ");
-				APPEND_STRING(s, v->org_hash_batches);
+				appendStringInfoString(s, v->org_hash_batches);
 				appendStringInfoChar(s, ')');
 			}
 		}
 		if (!ISZERO(v->peak_memory_usage))
 		{
 			appendStringInfoString(s, "  Memory Usage: ");
-			APPEND_STRING(s, v->peak_memory_usage);
+			appendStringInfoString(s, v->peak_memory_usage);
 			appendStringInfoString(s, "kB");
 		}
 	}
@@ -612,31 +617,31 @@ print_current_node(pgspParserContext * ctx)
 	{
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
-		APPEND_STRING(s, "Buffers: shared");
+		appendStringInfoString(s, "Buffers: shared");
 
 		if (!ISZERO(v->shared_hit_blks))
 		{
 			appendStringInfoString(s, " hit=");
-			APPEND_STRING(s, v->shared_hit_blks);
-			comma = true;
+			appendStringInfoString(s, v->shared_hit_blks);
+			comma =true;
 		}
 		if (!ISZERO(v->shared_read_blks))
 		{
 			appendStringInfoString(s, " read=");
-			APPEND_STRING(s, v->shared_read_blks);
-			comma = true;
+			appendStringInfoString(s, v->shared_read_blks);
+			comma =true;
 		}
 		if (!ISZERO(v->shared_dirtied_blks))
 		{
 			appendStringInfoString(s, " dirtied=");
-			APPEND_STRING(s, v->shared_dirtied_blks);
-			comma = true;
+			appendStringInfoString(s, v->shared_dirtied_blks);
+			comma =true;
 		}
 		if (!ISZERO(v->shared_written_blks))
 		{
 			appendStringInfoString(s, " written=");
-			APPEND_STRING(s, v->shared_written_blks);
-			comma = true;
+			appendStringInfoString(s, v->shared_written_blks);
+			comma =true;
 		}
 	}
 	if (!ISZERO(v->local_hit_blks) ||
@@ -656,26 +661,26 @@ print_current_node(pgspParserContext * ctx)
 		if (!ISZERO(v->local_hit_blks))
 		{
 			appendStringInfoString(s, " hit=");
-			APPEND_STRING(s, v->local_hit_blks);
-			comma = true;
+			appendStringInfoString(s, v->local_hit_blks);
+			comma =true;
 		}
 		if (!ISZERO(v->local_read_blks))
 		{
 			appendStringInfoString(s, " read=");
-			APPEND_STRING(s, v->local_read_blks);
-			comma = true;
+			appendStringInfoString(s, v->local_read_blks);
+			comma =true;
 		}
 		if (!ISZERO(v->local_dirtied_blks))
 		{
 			appendStringInfoString(s, " dirtied=");
-			APPEND_STRING(s, v->local_dirtied_blks);
-			comma = true;
+			appendStringInfoString(s, v->local_dirtied_blks);
+			comma =true;
 		}
 		if (!ISZERO(v->local_written_blks))
 		{
 			appendStringInfoString(s, " written=");
-			APPEND_STRING(s, v->local_written_blks);
-			comma = true;
+			appendStringInfoString(s, v->local_written_blks);
+			comma =true;
 		}
 	}
 	if (!ISZERO(v->temp_read_blks) ||
@@ -693,14 +698,14 @@ print_current_node(pgspParserContext * ctx)
 		if (!ISZERO(v->temp_read_blks))
 		{
 			appendStringInfoString(s, " read=");
-			APPEND_STRING(s, v->temp_read_blks);
-			comma = true;
+			appendStringInfoString(s, v->temp_read_blks);
+			comma =true;
 		}
 		if (!ISZERO(v->temp_written_blks))
 		{
 			appendStringInfoString(s, " written=");
-			APPEND_STRING(s, v->temp_written_blks);
-			comma = true;
+			appendStringInfoString(s, v->temp_written_blks);
+			comma =true;
 		}
 	}
 	if (!ISZERO(v->io_read_time) ||
@@ -716,55 +721,54 @@ print_current_node(pgspParserContext * ctx)
 		if (!ISZERO(v->io_read_time))
 		{
 			appendStringInfoString(s, " read=");
-			APPEND_STRING(s, v->io_read_time);
+			appendStringInfoString(s, v->io_read_time);
 		}
 		if (!ISZERO(v->io_write_time))
 		{
 			appendStringInfoString(s, " write=");
-			APPEND_STRING(s, v->io_write_time);
+			appendStringInfoString(s, v->io_write_time);
 		}
 	}
 }
 
 static void
-print_current_trig_node(pgspParserContext * ctx)
+print_current_trig_node(pgspParserContext *ctx)
 {
-	node_vals  *v = ctx->nodevals;
-	StringInfo	s = ctx->dest;
+	node_vals *v = ctx->nodevals;
+	StringInfo s = ctx->dest;
 
 	if (HASSTRING(v->trig_name) && !ISZERO(v->trig_time))
 	{
 		if (s->len > 0)
 			appendStringInfoString(s, "\n");
 		appendStringInfoString(s, "Trigger ");
-		APPEND_STRING(s, v->trig_name);
+		appendStringInfoString(s, v->trig_name);
 		appendStringInfoString(s, ": time=");
-		APPEND_STRING(s, v->trig_time);
+		appendStringInfoString(s, v->trig_time);
 		appendStringInfoString(s, " calls=");
-		APPEND_STRING(s, v->trig_calls);
+		appendStringInfoString(s, v->trig_calls);
 	}
 }
 
 
 static void
-clear_nodeval(node_vals * vals)
+clear_nodeval(node_vals *vals)
 {
 	memset(vals, 0, sizeof(node_vals));
 }
 
-static void
+static JsonParseErrorType
 json_text_objstart(void *state)
 {
-	pgspParserContext *ctx = (pgspParserContext *) state;
-
+	pgspParserContext *ctx = (pgspParserContext *)state;
 	ctx->level++;
 
 	/* Create new grouping sets or reset existing ones */
 	if (ctx->current_list == P_GroupSets)
 	{
-		node_vals  *v = ctx->nodevals;
+		node_vals *v = ctx->nodevals;
 
-		ctx->tmp_gset = (grouping_set *) palloc0(sizeof(grouping_set));
+		ctx->tmp_gset = (grouping_set*) palloc0(sizeof(grouping_set));
 		if (!v->sort_key)
 			v->sort_key = makeStringInfo();
 		if (!v->group_key)
@@ -775,12 +779,14 @@ json_text_objstart(void *state)
 		resetStringInfo(v->group_key);
 		resetStringInfo(v->hash_key);
 	}
+
+	JSONACTION_RETURN_SUCCESS();
 }
 
-static void
+static JsonParseErrorType
 json_text_objend(void *state)
 {
-	pgspParserContext *ctx = (pgspParserContext *) state;
+	pgspParserContext *ctx = (pgspParserContext *)state;
 
 	/* Print current node if the object is a P_Plan or a child of P_Plans */
 	if (bms_is_member(ctx->level - 1, ctx->plan_levels))
@@ -796,13 +802,13 @@ json_text_objend(void *state)
 	else if (ctx->current_list == P_TargetTables)
 	{
 		/* Move the current working taget tables into nodevals */
-		node_vals  *v = ctx->nodevals;
+		node_vals *v = ctx->nodevals;
 
 		if (!ctx->work_str)
 			ctx->work_str = makeStringInfo();
 
 		resetStringInfo(ctx->work_str);
-		APPEND_STRING(ctx->work_str, v->operation);
+		appendStringInfoString(ctx->work_str, v->operation);
 		print_obj_name0(ctx->work_str, v->obj_name, v->schema_name, v->alias);
 		v->target_tables = lappend(v->target_tables,
 								   pstrdup(ctx->work_str->data));
@@ -811,7 +817,7 @@ json_text_objend(void *state)
 	else if (ctx->current_list == P_GroupSets && ctx->tmp_gset)
 	{
 		/* Move working grouping set into nodevals */
-		node_vals  *v = ctx->nodevals;
+		node_vals *v = ctx->nodevals;
 
 		/* Copy sort key if any */
 		if (v->sort_key->data[0])
@@ -828,23 +834,27 @@ json_text_objend(void *state)
 
 	ctx->last_elem_is_object = true;
 	ctx->level--;
+
+	JSONACTION_RETURN_SUCCESS();
 }
 
-static void
+static JsonParseErrorType
 json_text_arrstart(void *state)
 {
-	pgspParserContext *ctx = (pgspParserContext *) state;
+	pgspParserContext *ctx = (pgspParserContext *)state;
 
 	if (ctx->current_list == P_GroupSets)
 	{
 		ctx->wlist_level++;
 	}
+
+	JSONACTION_RETURN_SUCCESS();
 }
 
-static void
+static JsonParseErrorType
 json_text_arrend(void *state)
 {
-	pgspParserContext *ctx = (pgspParserContext *) state;
+	pgspParserContext *ctx = (pgspParserContext *)state;
 
 	if (ctx->current_list == P_GroupSets)
 	{
@@ -852,9 +862,9 @@ json_text_arrend(void *state)
 		 * wlist_level means that now at the end of innermost list of Group
 		 * Keys
 		 */
-		if (ctx->wlist_level == 3)
+		if (ctx->wlist_level  == 3)
 		{
-			node_vals  *v = ctx->nodevals;
+			node_vals *v = ctx->nodevals;
 
 			/*
 			 * At this point, v->group_key holds the keys in "Group Keys". The
@@ -885,13 +895,15 @@ json_text_arrend(void *state)
 		}
 		ctx->wlist_level--;
 	}
+
+	JSONACTION_RETURN_SUCCESS();
 }
 
-static void
+static JsonParseErrorType
 json_text_ofstart(void *state, char *fname, bool isnull)
 {
 	word_table *p;
-	pgspParserContext *ctx = (pgspParserContext *) state;
+	pgspParserContext *ctx = (pgspParserContext *)state;
 
 	ctx->setter = NULL;
 	p = search_word_table(propfields, fname, PGSP_JSON_TEXTIZE);
@@ -927,7 +939,7 @@ json_text_ofstart(void *state, char *fname, bool isnull)
 		}
 		else if (p->tag == P_TargetTables)
 		{
-			node_vals  *v = ctx->nodevals;
+			node_vals *v = ctx->nodevals;
 
 			ctx->current_list = p->tag;
 			ctx->list_fname = fname;
@@ -958,13 +970,15 @@ json_text_ofstart(void *state, char *fname, bool isnull)
 			ctx->section = p->tag;
 		ctx->setter = p->setter;
 	}
+
+	JSONACTION_RETURN_SUCCESS();
 }
 
-static void
+static JsonParseErrorType
 json_text_ofend(void *state, char *fname, bool isnull)
 {
-	pgspParserContext *ctx = (pgspParserContext *) state;
-	node_vals  *v = ctx->nodevals;
+	pgspParserContext *ctx = (pgspParserContext *)state;
+	node_vals *v = ctx->nodevals;
 
 	/* We assume that lists with same fname will not be nested */
 	if (ctx->list_fname && strcmp(fname, ctx->list_fname) == 0)
@@ -988,26 +1002,30 @@ json_text_ofend(void *state, char *fname, bool isnull)
 		if (HASSTRING(v->plan_time))
 		{
 			appendStringInfoString(ctx->dest, "\nPlanning Time: ");
-			APPEND_STRING(ctx->dest, v->plan_time);
+			appendStringInfoString(ctx->dest, v->plan_time);
 			appendStringInfoString(ctx->dest, " ms");
 		}
 		else
 		{
 			appendStringInfoString(ctx->dest, "\nExecution Time: ");
-			APPEND_STRING(ctx->dest, v->exec_time);
+			appendStringInfoString(ctx->dest, v->exec_time);
 			appendStringInfoString(ctx->dest, " ms");
 		}
 		clear_nodeval(v);
 	}
+
+	JSONACTION_RETURN_SUCCESS();
 }
 
-static void
+static JsonParseErrorType
 json_text_scalar(void *state, char *token, JsonTokenType tokentype)
 {
-	pgspParserContext *ctx = (pgspParserContext *) state;
+	pgspParserContext *ctx = (pgspParserContext *)state;
 
 	if (ctx->setter)
 		ctx->setter(ctx->nodevals, token);
+
+	JSONACTION_RETURN_SUCCESS();
 }
 
 char *
@@ -1015,23 +1033,23 @@ pgsp_json_textize(char *json)
 {
 	JsonLexContext lex;
 	JsonSemAction sem;
-	pgspParserContext ctx;
+	pgspParserContext	ctx;
 
 	init_json_lex_context(&lex, json);
 	init_parser_context(&ctx, PGSP_JSON_TEXTIZE, json, NULL, 0);
 
-	ctx.nodevals = (node_vals *) palloc0(sizeof(node_vals));
+	ctx.nodevals = (node_vals*)palloc0(sizeof(node_vals));
 
-	sem.semstate = (void *) &ctx;
-	sem.object_start = json_text_objstart;
-	sem.object_end = json_text_objend;
-	sem.array_start = json_text_arrstart;
-	sem.array_end = json_text_arrend;
-	sem.object_field_start = (json_ofield_action) json_text_ofstart;
-	sem.object_field_end = (json_ofield_action) json_text_ofend;
-	sem.array_element_start = NULL;
-	sem.array_element_end = NULL;
-	sem.scalar = json_text_scalar;
+	sem.semstate = (void*)&ctx;
+	sem.object_start       = json_text_objstart;
+	sem.object_end         = json_text_objend;
+	sem.array_start        = json_text_arrstart;
+	sem.array_end          = json_text_arrend;
+	sem.object_field_start = json_text_ofstart;
+	sem.object_field_end   = json_text_ofend;
+	sem.array_element_start= NULL;
+	sem.array_element_end  = NULL;
+	sem.scalar             = json_text_scalar;
 
 
 	if (!run_pg_parse_json(&lex, &sem))

@@ -3,6 +3,7 @@
 *.so
 *.o
 *.bc
+*.dylib
 CMakeLists.txt
 regression.*
 results

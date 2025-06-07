@@ -2,7 +2,8 @@
  *
  * pgsp_json_text.h: Defenitions for text plan generator for pg_store_plans.
  *
- * Copyright (c) 2012-2020, NIPPON TELEGRAPH AND TELEPHONE CORPORATION
+ * Copyright (c) 2008-2025, PostgreSQL Global Development Group
+ * Copyright (c) 2012-2025, NIPPON TELEGRAPH AND TELEPHONE CORPORATION
  *
  * IDENTIFICATION
  *	  pg_store_plans/pgsp_json_text.h
@@ -100,6 +101,7 @@ typedef struct
 	const char *workers_planned;
 	const char *workers_launched;
 	bool		inner_unique;
+	bool		async_capable;
 	const char *table_func_name;
 	StringInfo	presorted_key;
 	StringInfo	sortmethod_used;
@@ -225,6 +227,7 @@ SETTERDECL(worker_number);
 SETTERDECL(workers_planned);
 SETTERDECL(workers_launched);
 SETTERDECL(inner_unique);
+SETTERDECL(async_capable);
 SETTERDECL(table_func_name);
 SETTERDECL(presorted_key);
 SETTERDECL(sortmethod_used);
