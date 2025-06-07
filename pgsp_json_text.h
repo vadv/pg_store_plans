@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * Copyright (c) 2012-2020, NIPPON TELEGRAPH AND TELEPHONE CORPORATION
+ * pgsp_json_text.h: Defenitions for text plan generator for pg_store_plans.
  *
  * Copyright (c) 2008-2025, PostgreSQL Global Development Group
  *
