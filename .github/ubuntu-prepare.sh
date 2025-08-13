@@ -7,4 +7,4 @@ sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)
 sudo apt-get update
 sudo apt-get install -y postgresql-$PG_VERSION postgresql-server-dev-$PG_VERSION
 export PG_CONFIG=/usr/lib/postgresql/$PG_VERSION/bin/pg_config
-make
+make installcheck
