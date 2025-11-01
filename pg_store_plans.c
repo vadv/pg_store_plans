@@ -967,7 +967,7 @@ pgsp_ExecutorFinish(QueryDesc *queryDesc)
 static void
 pgsp_ExecutorEnd(QueryDesc *queryDesc)
 {
-	if (!IsParallelWorker() && (queryDesc->totaltime)
+	if (!IsParallelWorker() && queryDesc->totaltime)
 	{
 		InstrEndLoop(queryDesc->totaltime);
 
