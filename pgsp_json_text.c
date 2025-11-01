@@ -264,7 +264,8 @@ print_prop(StringInfo s, char *prepstr,
 		appendStringInfoString(s, "\n");
 		appendStringInfoSpaces(s, TEXT_INDENT_DETAILS(level, exind));
 	}
-	appendStringInfoString(s, prepstr);
+	if (prepstr)
+		appendStringInfoString(s, prepstr);
 	appendStringInfoString(s, prop);
 }
 
@@ -338,7 +339,7 @@ print_current_node(pgspParserContext *ctx)
 	 * treat.
 	 */
 
-	if (v->node_type == T_Invalid && !HASSTRING(v->worker_number))
+	if (v->nodetag == T_Invalid && !HASSTRING(v->worker_number))
 		return;
 
 	if (s->len > 0)
@@ -376,9 +377,14 @@ print_current_node(pgspParserContext *ctx)
 		case T_WorkTableScan:
 		case T_ForeignScan:
 			if (v->nodetag == T_ModifyTable)
-				appendStringInfoString(s, v->operation);
+			{
+				if (HASSTRING(v->operation))
+					appendStringInfoString(s, v->operation);
+				else
+					appendStringInfoString(s, "Modify");
+			}
 			else
-				appendStringInfoString(s, v->node_type);
+				appendStringInfoString(s, HASSTRING(v->node_type) ? v->node_type : "(Unknown)");
 
 			print_obj_name(ctx);
 			break;
@@ -386,7 +392,7 @@ print_current_node(pgspParserContext *ctx)
 		case T_IndexScan:
 		case T_IndexOnlyScan:
 		case T_BitmapIndexScan:
-			appendStringInfoString(s, v->node_type);
+			appendStringInfoString(s, HASSTRING(v->node_type) ? v->node_type : "(Unknown)");
 			print_prop_if_exists(s, " ", v->scan_dir, 0, 0);
 			print_prop_if_exists(s, " using ", v->index_name, 0, 0);
 			print_obj_name(ctx);
@@ -395,7 +401,7 @@ print_current_node(pgspParserContext *ctx)
 		case T_NestLoop:
 		case T_MergeJoin:
 		case T_HashJoin:
-			appendStringInfoString(s, v->node_type);
+			appendStringInfoString(s, HASSTRING(v->node_type) ? v->node_type : "Join");
 			if (v->join_type && strcmp(v->join_type, "Inner") != 0)
 			{
 				appendStringInfoChar(s, ' ');
@@ -406,7 +412,7 @@ print_current_node(pgspParserContext *ctx)
 			break;
 
 		case T_SetOp:
-			appendStringInfoString(s, v->node_type);
+			appendStringInfoString(s, HASSTRING(v->node_type) ? v->node_type : "(Unknown)");
 			print_prop_if_exists(s, " ", v->setopcommand, 0, 0);
 			break;
 
@@ -425,7 +431,7 @@ print_current_node(pgspParserContext *ctx)
 				exind = -4;
 			}
 			else
-				appendStringInfoString(s, v->node_type);
+				appendStringInfoString(s, HASSTRING(v->node_type) ? v->node_type : "(Unknown)");
 			break;
 	}
 
@@ -807,10 +813,13 @@ json_text_objend(void *state)
 			ctx->work_str = makeStringInfo();
 
 		resetStringInfo(ctx->work_str);
-		appendStringInfoString(ctx->work_str, v->operation);
+		if (HASSTRING(v->operation))
+			appendStringInfoString(ctx->work_str, v->operation);
+		else
+			appendStringInfoString(ctx->work_str, "Modify");
 		print_obj_name0(ctx->work_str, v->obj_name, v->schema_name, v->alias);
 		v->target_tables = lappend(v->target_tables,
-								   pstrdup(ctx->work_str->data));
+							   pstrdup(ctx->work_str->data));
 		resetStringInfo(ctx->work_str);
 	}
 	else if (ctx->current_list == P_GroupSets && ctx->tmp_gset)
@@ -886,8 +895,11 @@ json_text_arrend(void *state)
 				ctx->tmp_gset->key_type = "Hash Key: ";
 			}
 			else
+			{
 				ctx->tmp_gset->group_keys =
 					lappend(ctx->tmp_gset->group_keys, "()");
+				ctx->tmp_gset->key_type = "Group Key: ";
+			}
 
 			resetStringInfo(ctx->nodevals->group_key);
 			resetStringInfo(ctx->nodevals->hash_key);
