@@ -40,6 +40,9 @@
 #include "catalog/pg_authid.h"
 #include "commands/explain.h"
 #include "access/hash.h"
+#if PG_VERSION_NUM >= 90500
+#include "access/parallel.h"
+#endif
 #include "executor/instrument.h"
 #include "optimizer/planner.h"
 #include "funcapi.h"
@@ -70,6 +73,10 @@ PG_MODULE_MAGIC;
 
 /* Location of stats file */
 #define PGSP_DUMP_FILE	"global/pg_store_plans.stat"
+
+#if PG_VERSION_NUM < 90500
+#define		IsParallelWorker()		(false)
+#endif
 
 /* This constant defines the magic number in the stats file header */
 static const uint32 PGSP_FILE_HEADER = 0x20180613;
@@ -868,7 +875,7 @@ pgsp_planner(Query *parse,
 static void
 pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
-	if (log_analyze &&
+	if (!IsParallelWorker() && log_analyze &&
 		(eflags & EXEC_FLAG_EXPLAIN_ONLY) == 0)
 	{
 		queryDesc->instrument_options |=
@@ -892,7 +899,7 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 	 * Set up to track total elapsed time in ExecutorRun. Allocate in
 	 * per-query context so as to be free at ExecutorEnd.
 	 */
-	if (queryDesc->totaltime == NULL && pgsp_enabled())
+	if (!IsParallelWorker() && queryDesc->totaltime == NULL && pgsp_enabled())
 	{
 		MemoryContext oldcxt;
 
@@ -960,7 +967,7 @@ pgsp_ExecutorFinish(QueryDesc *queryDesc)
 static void
 pgsp_ExecutorEnd(QueryDesc *queryDesc)
 {
-	if (queryDesc->totaltime)
+	if (!IsParallelWorker() && queryDesc->totaltime)
 	{
 		InstrEndLoop(queryDesc->totaltime);
 
