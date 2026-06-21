@@ -39,7 +39,7 @@ enum pgsptokentype
     NULL_P = 540,                  /* NULL_P  */
     TRUE_P = 689,                  /* TRUE_P  */
 };
-#elif PG_VERSION_NUM < 180000
+#elif PG_VERSION_NUM < 190000
 enum pgsptokentype
 {
     IDENT = 258,                   /* IDENT  */

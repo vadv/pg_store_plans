@@ -39,6 +39,10 @@
 
 #include "catalog/pg_authid.h"
 #include "commands/explain.h"
+#if PG_VERSION_NUM >= 180000
+#include "commands/explain_format.h"
+#include "commands/explain_state.h"
+#endif
 #include "access/hash.h"
 #if PG_VERSION_NUM >= 90500
 #include "access/parallel.h"
@@ -310,9 +314,15 @@ static PlannedStmt *pgsp_planner(Query *parse,
 								 int cursorOptions,
 								 ParamListInfo boundParams);
 static void pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags);
+#if PG_VERSION_NUM < 180000
 static void pgsp_ExecutorRun(QueryDesc *queryDesc,
 							 ScanDirection direction,
 							 uint64 count, bool execute_once);
+#else
+static void pgsp_ExecutorRun(QueryDesc *queryDesc,
+							 ScanDirection direction,
+							 uint64 count);
+#endif
 static void pgsp_ExecutorFinish(QueryDesc *queryDesc);
 static void pgsp_ExecutorEnd(QueryDesc *queryDesc);
 static void pgsp_ProcessUtility(PlannedStmt *pstmt, const char *queryString,
@@ -918,6 +928,7 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
  * ExecutorRun hook: all we need do is track nesting depth
  */
 static void
+#if PG_VERSION_NUM < 180000
 pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count,
 				 bool execute_once)
 {
@@ -937,6 +948,26 @@ pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count,
 	}
 	PG_END_TRY();
 }
+#else
+pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count)
+{
+	nested_level++;
+	PG_TRY();
+	{
+		if (prev_ExecutorRun)
+			prev_ExecutorRun(queryDesc, direction, count);
+		else
+			standard_ExecutorRun(queryDesc, direction, count);
+		nested_level--;
+	}
+	PG_CATCH();
+	{
+		nested_level--;
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+}
+#endif
 
 /*
  * ExecutorFinish hook: all we need do is track nesting depth
