@@ -17,7 +17,7 @@ PG_VERSION := $(shell $(PG_CONFIG) --version | sed "s/^PostgreSQL //" | sed "s/\
 
 DATA = pg_store_plans--1.5--1.6.sql pg_store_plans--1.6--1.7.sql pg_store_plans--1.7--1.8.sql pg_store_plans--1.8--1.9.sql pg_store_plans--1.9--2.0.sql pg_store_plans--1.5.sql pg_store_plans--1.6.sql pg_store_plans--1.8.sql pg_store_plans--1.9.sql pg_store_plans--2.0.sql
 
-REGRESS = convert store vadv
+REGRESS = convert store vadv review
 REGRESS_OPTS = --temp-config=regress.conf
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
