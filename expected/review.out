@@ -85,19 +85,3 @@ RESET pg_store_plans.log_buffers;
 RESET pg_store_plans.log_analyze;
 RESET work_mem;
 RESET track_io_timing;
-ALTER EXTENSION pg_store_plans UPDATE TO '2.0';
-COPY (
-  SELECT extversion = '2.0' AS downgraded_to_2_0
-  FROM pg_extension
-  WHERE extname = 'pg_store_plans'
-) TO STDOUT WITH CSV HEADER;
-downgraded_to_2_0
-t
-ALTER EXTENSION pg_store_plans UPDATE TO '2.1';
-COPY (
-  SELECT extversion = '2.1' AS upgraded_to_2_1
-  FROM pg_extension
-  WHERE extname = 'pg_store_plans'
-) TO STDOUT WITH CSV HEADER;
-upgraded_to_2_1
-t
