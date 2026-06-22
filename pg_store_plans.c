@@ -162,7 +162,7 @@ typedef struct StatEntry
 	Counters	counters;		/* the statistics for this query */
 	int			plan_len;		/* # of valid bytes in query string */
 	int			encoding;		/* query encoding */
-	slock_t		mutex;			/* protects the counters only */
+	slock_t		mutex;			/* protects counters and mutable plan fields */
 	char		plan[1];		/* VARIABLE LENGTH ARRAY - MUST BE LAST */
 
 	/*
@@ -339,6 +339,7 @@ static void store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 static Size shared_mem_size(void);
 static StatEntry *entry_alloc(EntryKey * key, const char *query,
 							  int plan_len, bool sticky);
+static char *entry_copy_plan(StatEntry *entry);
 static void entry_dealloc(void);
 static void entry_reset(void);
 
@@ -1366,13 +1367,43 @@ pg_store_plans(PG_FUNCTION_ARGS)
 		bool		nulls[PG_STORE_PLANS_COLS];
 		int			i = 0;
 		int64		queryid = entry->key.queryid;
-		int64		queryid_stmt = entry->queryid;
+		int64		queryid_stmt;
 		int64		planid = entry->key.planid;
+		bool		show_plan = showtext && (is_allowed_role || entry->key.userid == userid);
+		char	   *plan = NULL;
 		Counters	tmp;
 		double		stddev;
 
 		memset(values, 0, sizeof(values));
 		memset(nulls, 0, sizeof(nulls));
+
+		if (show_plan)
+			plan = palloc(shared_state->plan_size);
+
+		/* copy mutable fields to local variables to keep locking time short */
+		{
+			volatile StatEntry *e = (volatile StatEntry *) entry;
+
+			SpinLockAcquire(&e->mutex);
+			queryid_stmt = e->queryid;
+			tmp = e->counters;
+			if (show_plan)
+			{
+				int			plan_len = Min(entry->plan_len, shared_state->plan_size - 1);
+
+				memcpy(plan, entry->plan, plan_len);
+				plan[plan_len] = '\0';
+			}
+			SpinLockRelease(&e->mutex);
+		}
+
+		/* Skip entry if unexecuted (ie, it's a pending "sticky" entry) */
+		if (tmp.calls == 0)
+		{
+			if (plan)
+				pfree(plan);
+			continue;
+		}
 
 		values[i++] = ObjectIdGetDatum(entry->key.userid);
 		values[i++] = ObjectIdGetDatum(entry->key.dbid);
@@ -1380,25 +1411,24 @@ pg_store_plans(PG_FUNCTION_ARGS)
 		values[i++] = Int64GetDatumFast(planid);
 		values[i++] = Int64GetDatumFast(queryid_stmt);
 
-
-		if (showtext && (is_allowed_role || entry->key.userid == userid))
+		if (show_plan)
 		{
-			char	   *pstr = entry->plan;
+			char	   *pstr = plan;
 			char	   *estr;
 
 			switch (plan_format)
 			{
 				case PLAN_FORMAT_TEXT:
-					pstr = pgsp_json_textize(entry->plan);
+					pstr = pgsp_json_textize(plan);
 					break;
 				case PLAN_FORMAT_JSON:
-					pstr = pgsp_json_inflate(entry->plan);
+					pstr = pgsp_json_inflate(plan);
 					break;
 				case PLAN_FORMAT_YAML:
-					pstr = pgsp_json_yamlize(entry->plan);
+					pstr = pgsp_json_yamlize(plan);
 					break;
 				case PLAN_FORMAT_XML:
-					pstr = pgsp_json_xmlize(entry->plan);
+					pstr = pgsp_json_xmlize(plan);
 					break;
 				default:
 					break;
@@ -1413,8 +1443,9 @@ pg_store_plans(PG_FUNCTION_ARGS)
 
 			if (estr != pstr)
 				pfree(estr);
-			if (pstr != entry->plan)
+			if (pstr != plan)
 				pfree(pstr);
+			pfree(plan);
 
 		}
 		else if (showtext) {
@@ -1422,19 +1453,6 @@ pg_store_plans(PG_FUNCTION_ARGS)
 		} else {
 			nulls[i++] = true;
 		};
-
-		/* copy counters to a local variable to keep locking time short */
-		{
-			volatile StatEntry *e = (volatile StatEntry *) entry;
-
-			SpinLockAcquire(&e->mutex);
-			tmp = e->counters;
-			SpinLockRelease(&e->mutex);
-		}
-
-		/* Skip entry if unexecuted (ie, it's a pending "sticky" entry) */
-		if (tmp.calls == 0)
-			continue;
 
 		values[i++] = Int64GetDatumFast(tmp.calls);
 		values[i++] = Int64GetDatumFast(tmp.slow_log_calls);
@@ -1556,6 +1574,30 @@ entry_alloc(EntryKey * key, const char *plan, int plan_len, bool sticky)
 }
 
 /*
+ * Return a palloc'd, null-terminated snapshot of the entry plan.
+ *
+ * The caller must hold shared_state->lock so that the hash entry cannot be
+ * removed while the copy is taken.
+ */
+static char *
+entry_copy_plan(StatEntry *entry)
+{
+	volatile StatEntry *e = (volatile StatEntry *) entry;
+	char	   *plan;
+	int			plan_len;
+
+	plan = palloc(shared_state->plan_size);
+
+	SpinLockAcquire(&e->mutex);
+	plan_len = Min(entry->plan_len, shared_state->plan_size - 1);
+	memcpy(plan, entry->plan, plan_len);
+	plan[plan_len] = '\0';
+	SpinLockRelease(&e->mutex);
+
+	return plan;
+}
+
+/*
  * qsort comparator for sorting into increasing usage order
  */
 static int
@@ -1647,6 +1689,7 @@ pg_store_plans_get_plan(PG_FUNCTION_ARGS)
 {
 	StatEntry  *entry;
 	EntryKey    key;
+	char	   *plan = NULL;
 
 	key.userid = PG_GETARG_OID(0);
 	key.dbid = PG_GETARG_OID(1);
@@ -1655,12 +1698,19 @@ pg_store_plans_get_plan(PG_FUNCTION_ARGS)
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 	entry = (StatEntry *) hash_search(hash_table, &key, HASH_FIND, NULL);
+	if (entry)
+		plan = entry_copy_plan(entry);
 	LWLockRelease(shared_state->lock);
-	if (entry) {
-		PG_RETURN_TEXT_P(cstring_to_text(entry->plan));
-	} else {
-		PG_RETURN_NULL();
+
+	if (plan)
+	{
+		text	   *result = cstring_to_text(plan);
+
+		pfree(plan);
+		PG_RETURN_TEXT_P(result);
 	}
+
+	PG_RETURN_NULL();
 }
 
 Datum

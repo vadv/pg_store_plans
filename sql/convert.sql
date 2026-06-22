@@ -63,6 +63,53 @@ COPY (
   ORDER BY title
 ) TO STDOUT WITH CSV HEADER;
 
+COPY (
+  WITH plans(title, lplan) AS (
+    VALUES
+      ('disabled true', $${
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Disabled": true,
+          "Relation Name": "t1",
+          "Alias": "t1"
+        }
+      }$$),
+      ('disabled false', $${
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Disabled": false,
+          "Relation Name": "t1",
+          "Alias": "t1"
+        }
+      }$$)
+  ),
+  converted AS (
+    SELECT title, pg_store_plans_textplan(pg_store_plans_shorten(lplan)) AS tplan
+    FROM plans
+  )
+  SELECT title,
+         CASE title
+           WHEN 'disabled true' THEN tplan LIKE '%Disabled: true%'
+           ELSE tplan NOT LIKE '%Disabled:%'
+         END AS disabled_text_matches
+  FROM converted
+  ORDER BY title
+) TO STDOUT WITH CSV HEADER;
+
+COPY (
+  WITH normalized AS (
+    SELECT pg_store_plans_normalize($${
+      "Plan": {
+        "Node Type": "Result",
+        "Output": ["true", "false", "NULL", "LOCALTIME"]
+      }
+    }$$) AS plan
+  )
+  SELECT length(plan) - length(replace(plan, '?', '')) = 4 AND
+         plan !~* '(true|false|null|localtime)' AS const_tokens_normalized
+  FROM normalized
+) TO STDOUT WITH CSV HEADER;
+
 SELECT pg_store_plans_textplan(pg_store_plans_shorten($${
   "Plan": {
     "Node Type": "ModifyTable",

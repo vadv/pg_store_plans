@@ -201,7 +201,7 @@ DEFAULT_SETTER(workers_planned);
 DEFAULT_SETTER(workers_launched);
 BOOL_SETTER(inner_unique);
 BOOL_SETTER(async_capable);
-DEFAULT_SETTER(disabled);
+BOOL_SETTER(disabled);
 DEFAULT_SETTER(table_func_name);
 LIST_SETTER(presorted_key);
 LIST_SETTER(sortmethod_used);
@@ -499,7 +499,8 @@ print_current_node(pgspParserContext *ctx)
 	print_prop_if_exists(s, "Recheck Cond: ", v->recheck_cond, level, exind);
 	print_prop_if_exists(s, "Workers Planned: ", v->workers_planned, level, exind);
 	print_prop_if_exists(s, "Workers Launched: ", v->workers_launched, level, exind);
-	print_prop_if_exists(s, "Disabled: ", v->disabled, level, exind);
+	if (v->disabled)
+		print_prop(s, "Disabled: ", "true", level, exind);
 
 	if (HASSTRING(v->sampling_method))
 	{
@@ -832,7 +833,7 @@ json_text_objend(void *state)
 		/* Copy sort key if any */
 		if (v->sort_key->data[0])
 		{
-			ctx->tmp_gset->sort_keys = strdup(v->sort_key->data);
+			ctx->tmp_gset->sort_keys = pstrdup(v->sort_key->data);
 			resetStringInfo(v->sort_key);
 		}
 

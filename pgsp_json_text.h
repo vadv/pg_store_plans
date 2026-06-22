@@ -101,7 +101,7 @@ typedef struct
 	const char *workers_launched;
 	bool		inner_unique;
 	bool		async_capable;
-	const char *disabled;
+	bool		disabled;
 	const char *table_func_name;
 	StringInfo	presorted_key;
 	StringInfo	sortmethod_used;
