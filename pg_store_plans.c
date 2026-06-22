@@ -540,6 +540,7 @@ _PG_init(void)
 	shmem_request_hook = pgsp_shmem_request;
 #endif
 	prev_planner_hook = planner_hook;
+	prev_shmem_startup_hook = shmem_startup_hook;
 	shmem_startup_hook = pgsp_shmem_startup;
 	planner_hook = pgsp_planner;
 	prev_ExecutorStart = ExecutorStart_hook;
@@ -928,8 +929,8 @@ pgsp_ExecutorStart(QueryDesc *queryDesc, int eflags)
 /*
  * ExecutorRun hook: all we need do is track nesting depth
  */
-static void
 #if PG_VERSION_NUM < 180000
+static void
 pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count,
 				 bool execute_once)
 {
@@ -950,6 +951,7 @@ pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count,
 	PG_END_TRY();
 }
 #else
+static void
 pgsp_ExecutorRun(QueryDesc *queryDesc, ScanDirection direction, uint64 count)
 {
 	nested_level++;
@@ -1262,15 +1264,19 @@ store_entry(char *plan, uint32 queryId, queryid_t queryId_pgss,
 	e->counters.local_blks_written += bufusage->local_blks_written;
 	e->counters.temp_blks_read += bufusage->temp_blks_read;
 	e->counters.temp_blks_written += bufusage->temp_blks_written;
-	#if PG_VERSION_NUM >= 170000
-    e->counters.blk_read_time +=
-                INSTR_TIME_GET_MILLISEC(bufusage->shared_blk_read_time);
-    e->counters.blk_read_time +=
-                INSTR_TIME_GET_MILLISEC(bufusage->local_blk_read_time);
-    e->counters.blk_write_time +=
-                INSTR_TIME_GET_MILLISEC(bufusage->shared_blk_write_time);
-    e->counters.blk_write_time +=
-                INSTR_TIME_GET_MILLISEC(bufusage->local_blk_write_time);
+#if PG_VERSION_NUM >= 170000
+	e->counters.blk_read_time +=
+		INSTR_TIME_GET_MILLISEC(bufusage->shared_blk_read_time);
+	e->counters.blk_read_time +=
+		INSTR_TIME_GET_MILLISEC(bufusage->local_blk_read_time);
+	e->counters.blk_read_time +=
+		INSTR_TIME_GET_MILLISEC(bufusage->temp_blk_read_time);
+	e->counters.blk_write_time +=
+		INSTR_TIME_GET_MILLISEC(bufusage->shared_blk_write_time);
+	e->counters.blk_write_time +=
+		INSTR_TIME_GET_MILLISEC(bufusage->local_blk_write_time);
+	e->counters.blk_write_time +=
+		INSTR_TIME_GET_MILLISEC(bufusage->temp_blk_write_time);
 #else
 	e->counters.blk_read_time += INSTR_TIME_GET_MILLISEC(bufusage->blk_read_time);
 	e->counters.blk_write_time += INSTR_TIME_GET_MILLISEC(bufusage->blk_write_time);

@@ -83,34 +83,103 @@ COPY (
           "Relation Name": "t1",
           "Alias": "t1"
         }
+      }$$),
+      ('disabled absent', $${
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Relation Name": "t1",
+          "Alias": "t1"
+        }
+      }$$),
+      ('disabled invalid', $${
+        "Plan": {
+          "Node Type": "Seq Scan",
+          "Disabled": "invalid",
+          "Relation Name": "t1",
+          "Alias": "t1"
+        }
       }$$)
   ),
   converted AS (
-    SELECT title, pg_store_plans_textplan(pg_store_plans_shorten(lplan)) AS tplan
+    SELECT title,
+           lplan,
+           pg_store_plans_shorten(lplan) AS splan
     FROM plans
   )
   SELECT title,
          CASE title
-           WHEN 'disabled true' THEN tplan LIKE '%Disabled: true%'
-           ELSE tplan NOT LIKE '%Disabled:%'
-         END AS disabled_text_matches
+           WHEN 'disabled true' THEN
+             splan LIKE '%"ds":true%' AND
+             pg_store_plans_jsonplan(splan)::jsonb = lplan::jsonb AND
+             pg_store_plans_textplan(splan) LIKE '%Disabled: true%' AND
+             pg_store_plans_yamlplan(splan) LIKE '%Disabled: true%' AND
+             pg_store_plans_xmlplan(splan) LIKE '%<Disabled>true</Disabled>%'
+           WHEN 'disabled false' THEN
+             splan LIKE '%"ds":false%' AND
+             pg_store_plans_textplan(splan) NOT LIKE '%Disabled:%'
+           WHEN 'disabled absent' THEN
+             splan NOT LIKE '%"ds"%' AND
+             pg_store_plans_textplan(splan) NOT LIKE '%Disabled:%'
+           ELSE
+             splan LIKE '%"ds":"invalid"%' AND
+             pg_store_plans_textplan(splan) NOT LIKE '%Disabled:%'
+         END AS disabled_behavior_ok
   FROM converted
   ORDER BY title
 ) TO STDOUT WITH CSV HEADER;
-title,disabled_text_matches
+title,disabled_behavior_ok
+disabled absent,t
 disabled false,t
+disabled invalid,t
 disabled true,t
+CREATE OR REPLACE FUNCTION pgsp_explain_json(query text) RETURNS text AS $$
+DECLARE
+  line text;
+  result text := '';
+BEGIN
+  FOR line IN EXECUTE 'EXPLAIN (FORMAT JSON) ' || query LOOP
+    result := result || line;
+  END LOOP;
+  RETURN result;
+END
+$$ LANGUAGE plpgsql;
+CREATE TEMP TABLE pgsp_disabled_t(a int);
+SET enable_seqscan TO off;
+COPY (
+  WITH plan AS (
+    SELECT (pgsp_explain_json('SELECT * FROM pgsp_disabled_t')::json->0)::text AS lplan
+  ),
+  converted AS (
+    SELECT lplan, pg_store_plans_shorten(lplan) AS splan
+    FROM plan
+  )
+  SELECT current_setting('server_version_num')::int < 180000 OR
+         (
+           lplan LIKE '%"Disabled": true%' AND
+           splan LIKE '%"ds":true%' AND
+           pg_store_plans_jsonplan(splan)::jsonb = lplan::jsonb AND
+           pg_store_plans_textplan(splan) LIKE '%Disabled: true%' AND
+           pg_store_plans_yamlplan(splan) LIKE '%Disabled: true%' AND
+           pg_store_plans_xmlplan(splan) LIKE '%<Disabled>true</Disabled>%'
+         ) AS real_disabled_true_ok
+  FROM converted
+) TO STDOUT WITH CSV HEADER;
+real_disabled_true_ok
+t
+RESET enable_seqscan;
+DROP TABLE pgsp_disabled_t;
+DROP FUNCTION pgsp_explain_json(text);
 COPY (
   WITH normalized AS (
     SELECT pg_store_plans_normalize($${
       "Plan": {
         "Node Type": "Result",
-        "Output": ["true", "false", "NULL", "LOCALTIME"]
+        "Output": ["true", "false", "NULL", "LOCALTIME", "LOCALTIMESTAMP"]
       }
     }$$) AS plan
   )
-  SELECT length(plan) - length(replace(plan, '?', '')) = 4 AND
-         plan !~* '(true|false|null|localtime)' AS const_tokens_normalized
+  SELECT length(plan) - length(replace(plan, '?', '')) = 5 AND
+         plan !~* '(true|false|null|localtime|localtimestamp)' AS const_tokens_normalized
   FROM normalized
 ) TO STDOUT WITH CSV HEADER;
 const_tokens_normalized
