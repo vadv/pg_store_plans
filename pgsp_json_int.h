@@ -134,7 +134,8 @@ typedef enum
 	P_AvgSortSpcUsed,
 	P_PeakSortSpcUsed,
 	P_PreSortedGroups,
-	P_AsyncCapable
+	P_AsyncCapable,
+	P_Disabled
 } pgsp_prop_tags;
 
 typedef struct
@@ -207,4 +208,3 @@ extern bool run_pg_parse_json(JsonLexContext *lex, JsonSemAction *sem);
 extern void init_parser_context(pgspParserContext *ctx, int mode,
 								   char *orgstr, char *buf,int buflen);
 extern void init_json_lex_context(JsonLexContext *lex, char *json);
-

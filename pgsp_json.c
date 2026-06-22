@@ -126,6 +126,7 @@ word_table propfields[] =
 	{P_WorkersLaunched, "}" ,"Workers Launched",	NULL, true,  NULL,				SETTER(workers_launched)},
 	{P_InnerUnique,		"?" ,"Inner Unique",		NULL, true,  NULL,				SETTER(inner_unique)},
 	{P_AsyncCapable,	"ac", "Async Capable",		NULL, true,  NULL,				SETTER(async_capable)},
+	{P_Disabled,		"ds", "Disabled",			NULL, false, NULL,				SETTER(disabled)},
 
 	/* Values of these properties are ignored on normalization */
 	{P_FunctionCall,	"y" ,"Function Call",		NULL, false, NULL,				SETTER(func_call)},

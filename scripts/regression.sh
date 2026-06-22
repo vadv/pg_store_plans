@@ -20,7 +20,7 @@ echo "port = $PGPORT" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
 pg_ctlcluster $PGVERSION main start
 export PG_CONFIG=/usr/lib/postgresql/$PGVERSION/bin/pg_config
 make clean && make && make install
-psql -Atc 'alter system set shared_preload_libraries to pg_store_plans, pg_stat_statements'
+psql -Atc 'alter system set shared_preload_libraries to pg_stat_statements, pg_store_plans'
 pg_ctlcluster $PGVERSION main restart
 make installcheck
 
